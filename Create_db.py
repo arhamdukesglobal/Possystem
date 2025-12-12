@@ -1,12 +1,43 @@
 import sqlite3
-def Create_db():
-    con = sqlite3.connect(database=r'Possystem.db')
+
+def create_database():
+    con = sqlite3.connect("Possystem.db")
     cur = con.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS Employee(EmpID INTEGER PRIMARY KEY AUTOINCREMENT,Name text,Email text,Gender text,Contact text,DOB text,DOJ text,Password text,UserType text,Address text,Salary text)")
+
+    # Supplier table
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS Supplier("
+        "SuppInv INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "Name TEXT," 
+        "Contact TEXT,"
+        "Description TEXT)"
+    )
+
+    # Product table
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS Product("
+        "SuppInv INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "ProdID TEXT,"
+        "ProdName TEXT,"
+        "Quantity INTEGER,"
+        "Price REAL,"
+        "SupplierID INTEGER,"
+        "FOREIGN KEY (SupplierID) REFERENCES Supplier(SuppInv))"
+    )
+
+    # Sales table
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS Sales("
+        "SalesID INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "ProdID TEXT,"
+        "Quantity INTEGER,"
+        "Total REAL,"
+        "Date TEXT)"
+    )
+
     con.commit()
-
-    cur.execute("CREATE TABLE IF NOT EXISTS Supplier(SuppInv INTEGER PRIMARY KEY AUTOINCREMENT,Name text,Contact text,Description text)")
-    con.commit()
+    con.close()
 
 
-Create_db()
+if __name__ == "__main__":
+    create_database()
