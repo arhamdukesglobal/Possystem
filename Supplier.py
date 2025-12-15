@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import ttk, messagebox
 import sqlite3
 import os
+import re
 
 class SupplierClass:
     def __init__(self, root):
@@ -28,13 +29,15 @@ class SupplierClass:
         SearchFrame.place(x=250, y=20, width=600, height=70)
 
         #===options====
-        lbl_search = Label(SearchFrame, text="Search By Invoice No", bg="white", 
-                          font=("Times new Roman", 15))
-        lbl_search.place(x=10, y=10)
-
+        cmb_search = ttk.Combobox(SearchFrame, textvariable=self.var_searchby, 
+                                  values=["Select", "Invoice No", "Name", "Contact"], 
+                                  state='readonly', font=("Times new Roman", 12))
+        cmb_search.place(x=10, y=10, width=150)
+        cmb_search.current(0)
+        
         txt_search = Entry(SearchFrame, textvariable=self.var_searchtxt, 
                           font=("Aptos", 15), bg="lightyellow")
-        txt_search.place(x=200, y=10)
+        txt_search.place(x=170, y=10)
         
         btn_search = Button(SearchFrame, text="Search", command=self.search, 
                            font=("Aptos", 15), bg="#4caf50", fg="White", cursor="hand2")
@@ -51,13 +54,12 @@ class SupplierClass:
                            bg="white")
         lbl_SuppInv.place(x=50, y=150)
         
-        # Changed to readonly since it's auto-generated
         txt_SuppInv = Entry(self.root, textvariable=self.var_SuppInv, 
                            font=("goudy old style", 15), bg="lightyellow", state='readonly')
         txt_SuppInv.place(x=150, y=150, width=180)
         
         #====row2=====
-        lbl_name = Label(self.root, text="Name*", font=("goudy old style", 15), 
+        lbl_name = Label(self.root, text="Name", font=("goudy old style", 15), 
                         bg="white")
         lbl_name.place(x=50, y=190)
         
@@ -66,13 +68,17 @@ class SupplierClass:
         txt_name.place(x=150, y=190, width=180)
 
         #====row3=====
-        lbl_contact = Label(self.root, text="Contact*", font=("goudy old style", 15), 
+        lbl_contact = Label(self.root, text="Contact", font=("goudy old style", 15), 
                            bg="white")
         lbl_contact.place(x=50, y=230)
         
-        txt_contact = Entry(self.root, textvariable=self.var_contact, 
-                           font=("goudy old style", 15), bg="lightyellow")
-        txt_contact.place(x=150, y=230, width=180)
+        # Create contact entry with validation
+        self.txt_contact = Entry(self.root, textvariable=self.var_contact, 
+                                font=("goudy old style", 15), bg="lightyellow")
+        self.txt_contact.place(x=150, y=230, width=180)
+        
+        # Bind the key release event for real-time validation
+        self.txt_contact.bind('<KeyRelease>', self.validate_contact_length)
 
         #====row4=====
         lbl_desc = Label(self.root, text="Description", font=("goudy old style", 15), 
@@ -133,9 +139,13 @@ class SupplierClass:
     def setup_database(self):
         """Create database and table if they don't exist"""
         try:
-            con = sqlite3.connect(database=r'Possystem.db')
+            db_path = 'Possystem.db'
+            print(f"Connecting to database at: {os.path.abspath(db_path)}")
+            
+            con = sqlite3.connect(database=db_path)
             cur = con.cursor()
-            # Create supplier table if not exists
+            
+            # Create supplier table if it doesn't exist
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS Supplier (
                     SuppInv TEXT PRIMARY KEY,
@@ -152,7 +162,8 @@ class SupplierClass:
             messagebox.showerror("Database Error", f"Cannot setup database: {str(ex)}", parent=self.root)
 
     def generate_invoice_no(self):
-        con = sqlite3.connect(database=r'Possystem.db')
+        """Generate auto-incrementing invoice number"""
+        con = sqlite3.connect(database='Possystem.db')
         cur = con.cursor()
         try:
             # Get the last invoice number from database
@@ -162,8 +173,13 @@ class SupplierClass:
             if result:
                 # Extract the numeric part and increment
                 last_invoice = result[0]  # e.g., "S0001"
-                last_number = int(last_invoice[1:])  # Extract "0001" and convert to 1
-                next_number = last_number + 1
+                # Extract only digits from the string
+                numbers = re.findall(r'\d+', last_invoice)
+                if numbers:
+                    last_number = int(numbers[-1])  # Get the last number found
+                    next_number = last_number + 1
+                else:
+                    next_number = 1
             else:
                 # If no records exist, start from 1
                 next_number = 1
@@ -178,8 +194,51 @@ class SupplierClass:
         finally:
             con.close()
 
+    def validate_contact_length(self, event=None):
+        """Automatically restrict contact input to 11 digits"""
+        # Get current text and remove all non-digit characters
+        current_text = self.var_contact.get()
+        digits_only = re.sub(r'\D', '', current_text)
+        
+        # If we have more than 11 digits, truncate to 11
+        if len(digits_only) > 11:
+            digits_only = digits_only[:11]
+            
+            # Update the variable (this will trigger the entry to update)
+            self.var_contact.set(digits_only)
+            
+            # Move cursor to end
+            self.txt_contact.icursor(END)
+            
+            # Optionally, show a brief warning
+            self.txt_contact.config(bg="#ffebee")  # Light red background
+            self.root.after(500, lambda: self.txt_contact.config(bg="lightyellow"))
+    
+    def validate_contact_format(self, contact):
+        """Validate that contact number is exactly 11 digits and contains only numbers"""
+        # Remove any spaces, dashes, or other characters
+        clean_contact = re.sub(r'\D', '', contact)
+        
+        # Check if it's exactly 11 digits
+        if len(clean_contact) != 11:
+            return False, "Contact number must be exactly 11 digits"
+        
+        # Check if it contains only numbers
+        if not clean_contact.isdigit():
+            return False, "Contact number must contain only numbers"
+        
+        # Optional: Check if it starts with a valid prefix (for Pakistan: 03)
+        if not clean_contact.startswith('03'):
+            # You can remove or modify this check based on your country's phone number format
+            response = messagebox.askyesno("Warning", 
+                "Contact number doesn't start with '03'. Do you want to continue?")
+            if not response:
+                return False, "Contact number validation cancelled"
+        
+        return True, clean_contact
+
     def add(self):
-        con = sqlite3.connect(database=r'Possystem.db')
+        con = sqlite3.connect(database='Possystem.db')
         cur = con.cursor()
         try:
             # Get the description text
@@ -199,6 +258,16 @@ class SupplierClass:
                 messagebox.showerror("Error", error_msg, parent=self.root)
                 return
             
+            # Validate contact number format
+            contact = self.var_contact.get().strip()
+            is_valid, validation_result = self.validate_contact_format(contact)
+            if not is_valid:
+                messagebox.showerror("Validation Error", validation_result, parent=self.root)
+                return
+            
+            # Use the cleaned contact number
+            cleaned_contact = validation_result
+            
             # Get the current invoice number
             invoice_no = self.var_SuppInv.get()
             
@@ -217,17 +286,26 @@ class SupplierClass:
                     messagebox.showerror("Error", "Invoice number conflict, please try again", parent=self.root)
                     return
             
+            # Debug print
+            print(f"Attempting to insert: Invoice={invoice_no}, Name={self.var_name.get().strip()}, Contact={cleaned_contact}")
+            
             # Insert with auto-generated Invoice No
             cur.execute("INSERT INTO Supplier(SuppInv, Name, Contact, Description) VALUES(?, ?, ?, ?)", (
                 invoice_no,
                 self.var_name.get().strip(),
-                self.var_contact.get().strip(),
+                cleaned_contact,
                 description,
             ))
             con.commit()
+            print("Insert successful!")
             messagebox.showinfo("Success", "Supplier added successfully", parent=self.root)
             self.show()
             self.clear()
+        except sqlite3.IntegrityError:
+            messagebox.showerror("Error", "Invoice number already exists or database constraint violated", parent=self.root)
+        except sqlite3.Error as ex:
+            messagebox.showerror("Database Error", f"Error adding supplier: {str(ex)}", parent=self.root)
+            print(f"SQLite error: {str(ex)}")
         except Exception as ex:
             messagebox.showerror("Error", f"Error adding supplier: {str(ex)}", parent=self.root)
             print(f"Add error: {str(ex)}")
@@ -235,33 +313,39 @@ class SupplierClass:
             con.close()
 
     def show(self):
-        con = sqlite3.connect(database=r'Possystem.db')
+        con = sqlite3.connect(database='Possystem.db')
         cur = con.cursor()
         try:
             cur.execute("SELECT * FROM Supplier ORDER BY SuppInv")
             rows = cur.fetchall()
+            print(f"Found {len(rows)} records in database")
             self.SupplierTable.delete(*self.SupplierTable.get_children())
             for row in rows:
+                print(f"Adding to table: {row}")
                 self.SupplierTable.insert('', END, values=row)
         except Exception as ex:
             messagebox.showerror("Error", f"Error loading data: {str(ex)}", parent=self.root)
+            print(f"Show error: {str(ex)}")
         finally:
             con.close()
 
     def get_data(self, ev):
-        f = self.SupplierTable.focus()
-        content = self.SupplierTable.item(f)
-        row = content['values']
-        if row:  # Check if row has data
-            self.var_SuppInv.set(row[0])
-            self.var_name.set(row[1])
-            self.var_contact.set(row[2])
-            self.txt_desc.delete('1.0', END)
-            if row[3]:  # Check if description exists
-                self.txt_desc.insert(END, row[3])
+        try:
+            f = self.SupplierTable.focus()
+            content = self.SupplierTable.item(f)
+            row = content['values']
+            if row and len(row) >= 4:  # Check if row has data and has all 4 columns
+                self.var_SuppInv.set(row[0])
+                self.var_name.set(row[1])
+                self.var_contact.set(row[2])
+                self.txt_desc.delete('1.0', END)
+                if row[3]:  # Check if description exists
+                    self.txt_desc.insert(END, row[3])
+        except Exception as ex:
+            print(f"Error getting data: {str(ex)}")
 
     def update(self):
-        con = sqlite3.connect(database=r'Possystem.db')
+        con = sqlite3.connect(database='Possystem.db')
         cur = con.cursor()
         try:
             if not self.var_SuppInv.get():
@@ -285,9 +369,25 @@ class SupplierClass:
                 messagebox.showerror("Error", error_msg, parent=self.root)
                 return
             
+            # Validate contact number format
+            contact = self.var_contact.get().strip()
+            is_valid, validation_result = self.validate_contact_format(contact)
+            if not is_valid:
+                messagebox.showerror("Validation Error", validation_result, parent=self.root)
+                return
+            
+            # Use the cleaned contact number
+            cleaned_contact = validation_result
+            
+            # Check if supplier exists
+            cur.execute("SELECT * FROM Supplier WHERE SuppInv=?", (self.var_SuppInv.get(),))
+            if not cur.fetchone():
+                messagebox.showerror("Error", "Supplier not found in database", parent=self.root)
+                return
+            
             cur.execute("UPDATE Supplier SET Name=?, Contact=?, Description=? WHERE SuppInv=?", (
                 self.var_name.get().strip(),
-                self.var_contact.get().strip(),
+                cleaned_contact,
                 description,
                 self.var_SuppInv.get(),
             ))
@@ -296,15 +396,22 @@ class SupplierClass:
             self.show()
         except Exception as ex:
             messagebox.showerror("Error", f"Error updating supplier: {str(ex)}", parent=self.root)
+            print(f"Update error: {str(ex)}")
         finally:
             con.close()
 
     def delete(self):
-        con = sqlite3.connect(database=r'Possystem.db')
+        con = sqlite3.connect(database='Possystem.db')
         cur = con.cursor()
         try:
             if not self.var_SuppInv.get():
                 messagebox.showerror("Error", "Please select a supplier to delete", parent=self.root)
+                return
+            
+            # Check if supplier exists
+            cur.execute("SELECT * FROM Supplier WHERE SuppInv=?", (self.var_SuppInv.get(),))
+            if not cur.fetchone():
+                messagebox.showerror("Error", "Supplier not found in database", parent=self.root)
                 return
             
             op = messagebox.askyesno("Confirm", "Do you really want to delete this supplier?", parent=self.root)
@@ -323,40 +430,52 @@ class SupplierClass:
         self.var_contact.set("")
         self.txt_desc.delete('1.0', END)
         self.var_searchtxt.set("")
+        self.var_searchby.set("Select")
         # Generate new invoice number for next entry
         self.generate_invoice_no()
         self.show()
 
     def search(self):
-        con = sqlite3.connect(database=r'Possystem.db')
+        con = sqlite3.connect(database='Possystem.db')
         cur = con.cursor()
         try:
+            search_by = self.var_searchby.get()
             search_text = self.var_searchtxt.get().strip()
             
             if not search_text:
-                messagebox.showerror("Error", "Please enter invoice number to search", parent=self.root)
+                messagebox.showerror("Error", "Please enter search text", parent=self.root)
                 self.show()  # Show all if search is empty
                 return
             
-            # Check if user entered just the 4 digits or full invoice number
-            if search_text.isdigit() and len(search_text) <= 4:
-                # User entered just the digits, prepend 'S' and pad with zeros
-                search_invoice = f"S{int(search_text):04d}"
-            elif search_text.upper().startswith('S') and search_text[1:].isdigit() and len(search_text) <= 5:
-                # User entered S followed by digits
-                search_invoice = f"S{int(search_text[1:]):04d}"
-            else:
-                # Invalid format
-                messagebox.showerror("Error", "Please enter valid invoice number (e.g., S0001 or 1)", parent=self.root)
+            if search_by == "Select":
+                messagebox.showerror("Error", "Please select a search option", parent=self.root)
                 return
             
-            cur.execute("SELECT * FROM Supplier WHERE SuppInv=?", (search_invoice,))
-            row = cur.fetchone()
-            if row is not None:
-                self.SupplierTable.delete(*self.SupplierTable.get_children())
-                self.SupplierTable.insert('', END, values=row)
+            self.SupplierTable.delete(*self.SupplierTable.get_children())
+            
+            if search_by == "Invoice No":
+                # Handle invoice number search with various formats
+                if search_text.isdigit() and len(search_text) <= 4:
+                    search_invoice = f"S{int(search_text):04d}"
+                elif search_text.upper().startswith('S') and search_text[1:].isdigit() and len(search_text) <= 5:
+                    search_invoice = f"S{int(search_text[1:]):04d}"
+                else:
+                    search_invoice = search_text
+                
+                cur.execute("SELECT * FROM Supplier WHERE SuppInv=?", (search_invoice,))
+            elif search_by == "Name":
+                cur.execute("SELECT * FROM Supplier WHERE Name LIKE ?", (f'%{search_text}%',))
+            elif search_by == "Contact":
+                # Clean the contact for search
+                clean_search = re.sub(r'\D', '', search_text)
+                cur.execute("SELECT * FROM Supplier WHERE Contact LIKE ?", (f'%{clean_search}%',))
+            
+            rows = cur.fetchall()
+            if rows:
+                for row in rows:
+                    self.SupplierTable.insert('', END, values=row)
             else:
-                messagebox.showerror("Error", "No record found", parent=self.root)
+                messagebox.showinfo("No Results", "No records found matching your search", parent=self.root)
                 self.show()  # Show all if no record found
         except Exception as ex:
             messagebox.showerror("Error", f"Error searching: {str(ex)}", parent=self.root)
@@ -365,6 +484,29 @@ class SupplierClass:
 
 
 if __name__ == "__main__":
+    # First, create/verify the database
+    try:
+        con = sqlite3.connect('Possystem.db')
+        cur = con.cursor()
+        # Check if table exists with correct schema
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Supplier'")
+        if not cur.fetchone():
+            # Create table if doesn't exist
+            cur.execute('''
+                CREATE TABLE Supplier (
+                    SuppInv TEXT PRIMARY KEY,
+                    Name TEXT NOT NULL,
+                    Contact TEXT NOT NULL,
+                    Description TEXT
+                )
+            ''')
+            con.commit()
+            print("Supplier table created successfully")
+        con.close()
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+    
+    # Now run the application
     root = Tk()
     obj = SupplierClass(root)
     root.mainloop()
