@@ -13,30 +13,24 @@ def create_database():
         "Description TEXT)"
     )
 
-    # Product table
-    cur.execute(
-        "CREATE TABLE IF NOT EXISTS Product("
-        "SuppInv INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "ProdID TEXT,"
-        "ProdName TEXT,"
-        "Quantity INTEGER,"
-        "Price REAL,"
-        "SupplierID INTEGER,"
-        "FOREIGN KEY (SupplierID) REFERENCES Supplier(SuppInv))"
-    )
-
-    # Sales table
-    cur.execute(
-        "CREATE TABLE IF NOT EXISTS Sales("
-        "SalesID INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "ProdID TEXT,"
-        "Quantity INTEGER,"
-        "Total REAL,"
-        "Date TEXT)"
-    )
+    # Employee table
+    cur.execute('''CREATE TABLE IF NOT EXISTS Employee (
+                EmpID TEXT PRIMARY KEY,
+                Name TEXT NOT NULL,
+                Email TEXT,
+                Gender TEXT,
+                CNIC TEXT UNIQUE,
+                Contact TEXT,
+                DOB TEXT,
+                DOJ TEXT,
+                Password TEXT,
+                UserType TEXT,
+                Address TEXT,
+                Salary TEXT)''')
 
     con.commit()
     con.close()
+    print("Database and all tables created successfully!")
 
 
 if __name__ == "__main__":

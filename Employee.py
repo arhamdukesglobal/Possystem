@@ -6,6 +6,7 @@ import sqlite3
 from datetime import datetime
 import re
 from tkcalendar import DateEntry  # pip install tkcalendar
+import os
 
 class EmployeeClass:
     def __init__(self,root):
@@ -14,6 +15,9 @@ class EmployeeClass:
         self.root.title("Inventory Management System | Developed by Dukes Tech Services")
         self.root.config(bg="#E6FBFF")
         self.root.focus_force()
+        
+        # Initialize database - ensure Employee table exists
+        self.initialize_database()
         
         #===========================================
         # All Variables=========
@@ -175,9 +179,32 @@ class EmployeeClass:
         self.EmployeeTable.pack(fill=BOTH,expand=1)
         self.EmployeeTable.bind("<ButtonRelease-1>",self.get_data)
         
-        # Generate initial EmpID
+        # Generate initial EmpID and show data
         self.generate_emp_id()
         self.show()
+
+    def initialize_database(self):
+        """Ensure the Employee table exists in the database"""
+        try:
+            con = sqlite3.connect(database=r'Possystem.db')
+            cur = con.cursor()
+            cur.execute('''CREATE TABLE IF NOT EXISTS Employee (
+                        EmpID TEXT PRIMARY KEY,
+                        Name TEXT NOT NULL,
+                        Email TEXT,
+                        Gender TEXT,
+                        CNIC TEXT UNIQUE,
+                        Contact TEXT,
+                        DOB TEXT,
+                        DOJ TEXT,
+                        Password TEXT,
+                        UserType TEXT,
+                        Address TEXT,
+                        Salary TEXT)''')
+            con.commit()
+            con.close()
+        except Exception as e:
+            print(f"Error initializing database: {e}")
 
     def on_dob_select(self, event):
         self.var_DOB.set(self.dob_calendar.get_date().strftime("%d/%m/%Y"))
@@ -190,8 +217,8 @@ class EmployeeClass:
         con = sqlite3.connect(database=r'Possystem.db')
         cur = con.cursor()
         try:
-            # Create employee table if not exists
-            cur.execute('''CREATE TABLE IF NOT EXISTS employee (
+            # Ensure table exists (should already exist from initialize_database)
+            cur.execute('''CREATE TABLE IF NOT EXISTS Employee (
                         EmpID TEXT PRIMARY KEY,
                         Name TEXT NOT NULL,
                         Email TEXT,
@@ -215,7 +242,8 @@ class EmployeeClass:
                     # Extract numeric part and increment
                     num_part = int(max_id[1:])
                     new_num = num_part + 1
-                except:
+                except ValueError:
+                    # If the ID format is wrong, start from 1
                     new_num = 1
             else:
                 new_num = 1
@@ -248,7 +276,8 @@ class EmployeeClass:
                 if len(digits) > 12:
                     formatted = digits[:5] + '-' + digits[5:12] + '-' + digits[12:]
                 self.var_cnic.set(formatted)
-                self.cnic_entry.icursor(END)
+                # Move cursor to end
+                self.cnic_entry.icursor(len(formatted))
 
     def validate_contact(self, event=None):
         """Validate Contact to accept exactly 11 digits"""
@@ -259,7 +288,8 @@ class EmployeeClass:
             if len(digits) > 11:
                 digits = digits[:11]
             self.var_contact.set(digits)
-            self.contact_entry.icursor(END)
+            # Move cursor to end
+            self.contact_entry.icursor(len(digits))
 
     def validate_all_fields(self):
         """Validate that all required fields are filled"""
@@ -320,7 +350,9 @@ class EmployeeClass:
             errors.append("Salary is required")
         else:
             try:
-                float(self.var_salary.get())
+                salary_val = float(self.var_salary.get())
+                if salary_val <= 0:
+                    errors.append("Salary must be greater than 0")
             except:
                 errors.append("Salary must be a valid number")
         
@@ -339,40 +371,53 @@ class EmployeeClass:
             # Check if EmpID already exists
             cur.execute("Select * from employee where EmpID=?",(self.var_EmpID.get(),))
             row = cur.fetchone()
-            if row!=None:
+            if row is not None:
                 messagebox.showerror("Error","This Employee ID already assigned, try different",parent=self.root)
+                return
+            
+            # Check if CNIC already exists
+            cnic_clean = self.var_cnic.get().replace('-', '')
+            cur.execute("Select * from employee where CNIC=?",(cnic_clean,))
+            row = cur.fetchone()
+            if row is not None:
+                messagebox.showerror("Error","This CNIC already exists in the system",parent=self.root)
+                return
+            
+            # Check if Email already exists
+            cur.execute("Select * from employee where Email=?",(self.var_email.get(),))
+            row = cur.fetchone()
+            if row is not None:
+                messagebox.showerror("Error","This Email already exists in the system",parent=self.root)
+                return
+            
+            cur.execute("Insert into Employee(EmpID,Name,Email,Gender,CNIC,Contact,DOB,DOJ,Password,UserType,Address,Salary) values(?,?,?,?,?,?,?,?,?,?,?,?)",(
+                                    self.var_EmpID.get(),
+                                    self.var_name.get().strip(),
+                                    self.var_email.get().strip(),
+                                    self.var_gender.get(),
+                                    cnic_clean,
+                                    self.var_contact.get(),
+                                    self.var_DOB.get(),
+                                    self.var_DOJ.get(),
+                                    self.var_Password.get(),
+                                    self.var_utype.get(),
+                                    self.txt_address.get('1.0',END).strip(),
+                                    self.var_salary.get(),
+            ))
+            con.commit()
+            messagebox.showinfo("Success","Employee added successfully",parent=self.root)
+            self.show()
+            self.clear()  # Clear form and generate new EmpID
+        except sqlite3.IntegrityError as e:
+            if "UNIQUE" in str(e):
+                if "CNIC" in str(e):
+                    messagebox.showerror("Error","CNIC already exists in the system",parent=self.root)
+                elif "Email" in str(e):
+                    messagebox.showerror("Error","Email already exists in the system",parent=self.root)
             else:
-                # Check if CNIC already exists
-                cnic_clean = self.var_cnic.get().replace('-', '')
-                cur.execute("Select * from employee where CNIC=?",(cnic_clean,))
-                row = cur.fetchone()
-                if row!=None:
-                    messagebox.showerror("Error","This CNIC already exists in the system",parent=self.root)
-                    return
-                
-                # Clean CNIC (remove dashes)
-                cnic_clean = self.var_cnic.get().replace('-', '')
-                
-                cur.execute("Insert into Employee(EmpID,Name,Email,Gender,CNIC,Contact,DOB,DOJ,Password,UserType,Address,Salary) values(?,?,?,?,?,?,?,?,?,?,?,?)",(
-                                        self.var_EmpID.get(),
-                                        self.var_name.get(),
-                                        self.var_email.get(),
-                                        self.var_gender.get(),
-                                        cnic_clean,
-                                        self.var_contact.get(),
-                                        self.var_DOB.get(),
-                                        self.var_DOJ.get(),
-                                        self.var_Password.get(),
-                                        self.var_utype.get(),
-                                        self.txt_address.get('1.0',END).strip(),
-                                        self.var_salary.get(),
-                ))
-                con.commit()
-                messagebox.showinfo("Success","Employee added successfully",parent=self.root)
-                self.show()
-                self.clear()  # Clear form and generate new EmpID
+                messagebox.showerror("Error",f"Database error: {str(e)}",parent=self.root)
         except Exception as ex:
-            messagebox.showerror("Error",f"Error due to : {str(ex)}",parent=self.root)
+            messagebox.showerror("Error",f"Error due to: {str(ex)}",parent=self.root)
         finally:
             con.close()
 
@@ -394,14 +439,17 @@ class EmployeeClass:
                 
                 self.EmployeeTable.insert('',END,values=formatted_row)
         except Exception as ex:
-            messagebox.showerror("Error",f"Error due to : {str(ex)}",parent=self.root)
+            messagebox.showerror("Error",f"Error displaying data: {str(ex)}",parent=self.root)
         finally:
             con.close()
 
-    def get_data(self,ev):
-        f=self.EmployeeTable.focus()
-        content=(self.EmployeeTable.item(f))
-        row=content['values']
+    def get_data(self, ev):
+        f = self.EmployeeTable.focus()
+        if not f:
+            return
+            
+        content = self.EmployeeTable.item(f)
+        row = content['values']
         if row:
             self.var_EmpID.set(row[0])
             self.var_name.set(row[1])
@@ -435,8 +483,8 @@ class EmployeeClass:
             
             self.var_Password.set(row[8])
             self.var_utype.set(row[9])
-            self.txt_address.delete('1.0',END)
-            self.txt_address.insert(END,row[10])
+            self.txt_address.delete('1.0', END)
+            self.txt_address.insert(END, row[10])
             self.var_salary.set(row[11])
             
             # Make EmpID editable for update
@@ -452,58 +500,72 @@ class EmployeeClass:
             # Check if EmpID exists
             cur.execute("Select * from employee where EmpID=?",(self.var_EmpID.get(),))
             row = cur.fetchone()
-            if row==None:
+            if row is None:
                 messagebox.showerror("Error","Invalid Employee ID",parent=self.root)
+                return
+            
+            # Check if CNIC already exists for another employee
+            cnic_clean = self.var_cnic.get().replace('-', '')
+            cur.execute("Select * from employee where CNIC=? AND EmpID!=?",(cnic_clean, self.var_EmpID.get()))
+            row = cur.fetchone()
+            if row is not None:
+                messagebox.showerror("Error","This CNIC already exists for another employee",parent=self.root)
+                return
+            
+            # Check if Email already exists for another employee
+            cur.execute("Select * from employee where Email=? AND EmpID!=?",(self.var_email.get(), self.var_EmpID.get()))
+            row = cur.fetchone()
+            if row is not None:
+                messagebox.showerror("Error","This Email already exists for another employee",parent=self.root)
+                return
+            
+            cur.execute("Update employee set Name=?,Email=?,Gender=?,CNIC=?,Contact=?,DOB=?,DOJ=?,Password=?,UserType=?,Address=?,Salary=? where EmpID=?",(
+                                    self.var_name.get().strip(),
+                                    self.var_email.get().strip(),
+                                    self.var_gender.get(),
+                                    cnic_clean,
+                                    self.var_contact.get(),
+                                    self.var_DOB.get(),
+                                    self.var_DOJ.get(),
+                                    self.var_Password.get(),
+                                    self.var_utype.get(),
+                                    self.txt_address.get('1.0',END).strip(),
+                                    self.var_salary.get(),
+                                    self.var_EmpID.get(),
+            ))
+            con.commit()
+            messagebox.showinfo("Success","Employee updated successfully",parent=self.root)
+            self.show()
+            self.txt_empid.config(state='readonly')  # Make read-only again
+        except sqlite3.IntegrityError as e:
+            if "UNIQUE" in str(e):
+                messagebox.showerror("Error","Duplicate entry. CNIC or Email already exists for another employee.",parent=self.root)
             else:
-                # Check if CNIC already exists for another employee
-                cnic_clean = self.var_cnic.get().replace('-', '')
-                cur.execute("Select * from employee where CNIC=? AND EmpID!=?",(cnic_clean, self.var_EmpID.get()))
-                row = cur.fetchone()
-                if row!=None:
-                    messagebox.showerror("Error","This CNIC already exists for another employee",parent=self.root)
-                    return
-                
-                # Clean CNIC (remove dashes)
-                cnic_clean = self.var_cnic.get().replace('-', '')
-                
-                cur.execute("Update employee set Name=?,Email=?,Gender=?,CNIC=?,Contact=?,DOB=?,DOJ=?,Password=?,UserType=?,Address=?,Salary=? where EmpID=?",(
-                                        self.var_name.get(),
-                                        self.var_email.get(),
-                                        self.var_gender.get(),
-                                        cnic_clean,
-                                        self.var_contact.get(),
-                                        self.var_DOB.get(),
-                                        self.var_DOJ.get(),
-                                        self.var_Password.get(),
-                                        self.var_utype.get(),
-                                        self.txt_address.get('1.0',END).strip(),
-                                        self.var_salary.get(),
-                                        self.var_EmpID.get(),
-                ))
-                con.commit()
-                messagebox.showinfo("Success","Employee updated successfully",parent=self.root)
-                self.show()
-                self.txt_empid.config(state='readonly')  # Make read-only again
+                messagebox.showerror("Error",f"Database error: {str(e)}",parent=self.root)
         except Exception as ex:
-            messagebox.showerror("Error",f"Error due to : {str(ex)}",parent=self.root)
+            messagebox.showerror("Error",f"Error updating employee: {str(ex)}",parent=self.root)
         finally:
             con.close()
 
     def delete(self):
+        if not self.var_EmpID.get():
+            messagebox.showerror("Error","Please select an employee to delete",parent=self.root)
+            return
+            
         con = sqlite3.connect(database=r'Possystem.db')
         cur = con.cursor()
         try:
-            if not self.var_EmpID.get():
-                messagebox.showerror("Error","Please select an employee to delete",parent=self.root)
-            else:
-                op=messagebox.askyesno("Confirm","Do you really want to delete?",parent=self.root)
-                if op==True:
-                    cur.execute("delete from employee where EmpID=?",(self.var_EmpID.get(),))
-                    con.commit()
+            op = messagebox.askyesno("Confirm","Do you really want to delete this employee?",parent=self.root)
+            if op:
+                cur.execute("DELETE FROM employee WHERE EmpID=?",(self.var_EmpID.get(),))
+                con.commit()
+                if cur.rowcount > 0:
                     messagebox.showinfo("Delete","Employee deleted successfully",parent=self.root)
                     self.clear()
+                else:
+                    messagebox.showerror("Error","Employee not found",parent=self.root)
         except Exception as ex:
-            messagebox.showerror("Error",f"Error due to : {str(ex)}",parent=self.root)
+            messagebox.showerror("Error",f"Error deleting employee: {str(ex)}",parent=self.root)
         finally:
             con.close()
 
@@ -530,6 +592,7 @@ class EmployeeClass:
         # Generate new EmpID
         self.generate_emp_id()
         self.show()
+        self.txt_empid.config(state='readonly')
 
     def search(self):
         con = sqlite3.connect(database=r'Possystem.db')
@@ -539,21 +602,23 @@ class EmployeeClass:
                 messagebox.showerror("Error", "Select Search by option", parent=self.root)
                 return
 
-            if not self.var_searchtxt.get():
+            if not self.var_searchtxt.get().strip():
                 messagebox.showerror("Error", "Search input is required", parent=self.root)
                 return
 
-            search_text = self.var_searchtxt.get()
+            search_text = self.var_searchtxt.get().strip()
+            search_column = self.var_searchby.get()
 
             # Auto-fix EmpID input
-            if self.var_searchby.get() == "EmpID" and not search_text.startswith("E"):
+            if search_column == "EmpID" and not search_text.startswith("E"):
                 search_text = "E" + search_text
 
             # Clean CNIC input
-            if self.var_searchby.get() == "CNIC":
+            if search_column == "CNIC":
                 search_text = search_text.replace("-", "")
 
-            query = f"SELECT * FROM employee WHERE {self.var_searchby.get()} LIKE ?"
+            # Use parameterized query to prevent SQL injection
+            query = f"SELECT * FROM employee WHERE {search_column} LIKE ?"
             cur.execute(query, ("%" + search_text + "%",))
             rows = cur.fetchall()
 
@@ -567,11 +632,10 @@ class EmployeeClass:
                         formatted_row[4] = f"{row[4][:5]}-{row[4][5:12]}-{row[4][12:]}"
                     self.EmployeeTable.insert("", END, values=formatted_row)
             else:
-                messagebox.showinfo("Result", "No record found", parent=self.root)
+                messagebox.showinfo("Result", "No records found", parent=self.root)
 
         except Exception as ex:
-            messagebox.showerror("Error", f"Error due to: {str(ex)}", parent=self.root)
-
+            messagebox.showerror("Error", f"Error searching: {str(ex)}", parent=self.root)
         finally:
             con.close()
 
