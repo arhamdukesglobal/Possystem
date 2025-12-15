@@ -112,8 +112,7 @@ class SupplierClass:
         scrolly = Scrollbar(emp_frame, orient=VERTICAL)
         scrollx = Scrollbar(emp_frame, orient=HORIZONTAL)
 
-        self.SupplierTable = ttk.Treeview(emp_frame, columns=("Invoice", "Name", "Contact", "Description"),
-                                         yscrollcommand=scrolly.set, xscrollcommand=scrollx.set)
+        self.SupplierTable = ttk.Treeview(emp_frame, columns=("Invoice", "Name", "Contact", "Description"),yscrollcommand=scrolly.set, xscrollcommand=scrollx.set)
         scrollx.pack(side=BOTTOM, fill=X)
         scrolly.pack(side=RIGHT, fill=Y)
         scrollx.config(command=self.SupplierTable.xview)

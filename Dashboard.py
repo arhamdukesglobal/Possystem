@@ -3,6 +3,7 @@ from tkinter import *
 from PIL import Image, ImageTk
 from Employee import EmployeeClass
 from Supplier import SupplierClass
+from Category import CategoryClass
 
 class IMS:
     def __init__(self, root):
@@ -82,7 +83,7 @@ class IMS:
                font=("Aptos Display", 20, "bold"),
                bg="white", bd=6, cursor="hand2").pack(side=TOP, fill=X)
 
-        Button(menu_frame, text="Category", image=self.icon_side,
+        Button(menu_frame, text="Category", command=self.Category, image=self.icon_side,
                compound=LEFT, padx=5, anchor="w",
                font=("Aptos Display", 20, "bold"),
                bg="white", bd=6, cursor="hand2").pack(side=TOP, fill=X)
@@ -140,15 +141,19 @@ class IMS:
 
     # Window openers
     def Employee(self):
-        new_win = Toplevel(self.root)
-        EmployeeClass(new_win)
+        self.new_win = Toplevel(self.root)
+        self.new_obj = EmployeeClass(self.new_win)
 
     def Supplier(self):
-        new_win = Toplevel(self.root)
-        SupplierClass(new_win)
+        self.new_win = Toplevel(self.root)
+        self.new_obj = SupplierClass(self.new_win)
+
+    def Category(self):
+        self.new_win = Toplevel(self.root)
+        self.new_obj = CategoryClass(self.new_win)
 
 
 if __name__ == "__main__":
     root = Tk()
-    IMS(root)
+    obj = IMS(root)
     root.mainloop()
