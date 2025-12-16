@@ -4,6 +4,7 @@ from PIL import Image, ImageTk
 from Employee import EmployeeClass
 from Supplier import SupplierClass
 from Category import CategoryClass
+from Product import ProductClass
 
 class IMS:
     def __init__(self, root):
@@ -88,7 +89,7 @@ class IMS:
                font=("Aptos Display", 20, "bold"),
                bg="white", bd=6, cursor="hand2").pack(side=TOP, fill=X)
 
-        Button(menu_frame, text="Product", image=self.icon_side,
+        Button(menu_frame, text="Product",command=self.Product, image=self.icon_side,
                compound=LEFT, padx=5, anchor="w",
                font=("Aptos Display", 20, "bold"),
                bg="white", bd=6, cursor="hand2").pack(side=TOP, fill=X)
@@ -151,6 +152,10 @@ class IMS:
     def Category(self):
         self.new_win = Toplevel(self.root)
         self.new_obj = CategoryClass(self.new_win)
+
+    def Product(self):
+        self.new_win = Toplevel(self.root)
+        self.new_obj = ProductClass(self.new_win)
 
 
 if __name__ == "__main__":
