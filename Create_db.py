@@ -27,6 +27,11 @@ def create_database():
                 UserType TEXT,
                 Address TEXT,
                 Salary TEXT)''')
+    
+
+    cur.execute("CREATE TABLE IF NOT EXISTS Category(CID INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT)")
+    con.commit()
+    
 
     con.commit()
     con.close()
