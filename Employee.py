@@ -1,3 +1,5 @@
+#======================Employee.py================
+
 #Employee.py
 from tkinter import*
 from PIL import Image,ImageTk #pip install pillow
@@ -7,6 +9,7 @@ from datetime import datetime
 import re
 from tkcalendar import DateEntry  # pip install tkcalendar
 import os
+import locale
 
 class EmployeeClass:
     def __init__(self,root):
@@ -26,7 +29,7 @@ class EmployeeClass:
 
         self.var_EmpID = StringVar()
         self.var_gender = StringVar()
-        self.var_contact = StringVar()
+        self.var_contact = StringVar(value="+92")  # Set default value for contact
         self.var_name = StringVar()
         self.var_DOB = StringVar()
         self.var_DOJ = StringVar()
@@ -87,10 +90,23 @@ class EmployeeClass:
         self.dob_calendar.pack(fill=BOTH, expand=True)
         self.dob_calendar.bind("<<DateEntrySelected>>", self.on_dob_select)
         
-        # Contact entry
-        self.contact_entry = Entry(self.root, textvariable=self.var_contact, font=("goudy old style",15), bg="lightyellow")
-        self.contact_entry.place(x=850,y=190,width=180)
+        # Contact entry with +92 fixed prefix
+        contact_frame = Frame(self.root, bg="lightyellow")
+        contact_frame.place(x=850,y=190,width=180,height=30)
+        
+        # Label with fixed +92
+        contact_label = Label(contact_frame, text="+92", font=("goudy old style",15), bg="lightyellow", fg="gray")
+        contact_label.pack(side=LEFT)
+        
+        # Entry for remaining 10 digits
+        self.contact_entry = Entry(contact_frame, textvariable=self.var_contact, font=("goudy old style",15), 
+                                  bg="lightyellow", justify=LEFT)
+        self.contact_entry.pack(side=LEFT, fill=BOTH, expand=True)
         self.contact_entry.bind('<KeyRelease>', self.validate_contact)
+        
+        # Set initial value and bind focus event
+        self.var_contact.set("")
+        self.contact_entry.bind('<FocusIn>', self.on_contact_focus)
 
         #====row3=====
         lbl_email=Label(self.root,text="Email",font=("goudy old style",15),bg="white").place(x=50,y=230)
@@ -122,9 +138,20 @@ class EmployeeClass:
         self.txt_address=Text(self.root,font=("goudy old style",15),bg="lightyellow")
         self.txt_address.place(x=150,y=270,width=180,height=60)
         
-        # Salary entry
-        self.salary_entry = Entry(self.root, textvariable=self.var_salary, font=("goudy old style",15), bg="lightyellow")
-        self.salary_entry.place(x=500,y=270,width=180)
+        # Salary entry with Rs prefix and comma formatting
+        salary_frame = Frame(self.root, bg="lightyellow")
+        salary_frame.place(x=500,y=270,width=180,height=30)
+        
+        # Label with Rs prefix
+        salary_label = Label(salary_frame, text="Rs ", font=("goudy old style",15), bg="lightyellow", fg="gray")
+        salary_label.pack(side=LEFT)
+        
+        # Entry for salary with comma formatting
+        self.salary_entry = Entry(salary_frame, textvariable=self.var_salary, font=("goudy old style",15), 
+                                 bg="lightyellow", justify=RIGHT)
+        self.salary_entry.pack(side=LEFT, fill=BOTH, expand=True)
+        self.salary_entry.bind('<KeyRelease>', self.format_salary)
+        self.salary_entry.bind('<FocusOut>', self.format_salary_final)
         
         # Password entry
         self.txt_pass=Entry(self.root,textvariable=self.var_Password,font=("goudy old style",15),bg="lightyellow", show="*")
@@ -212,6 +239,81 @@ class EmployeeClass:
     def on_doj_select(self, event):
         self.var_DOJ.set(self.doj_calendar.get_date().strftime("%d/%m/%Y"))
 
+    def on_contact_focus(self, event):
+        """Set cursor to the beginning of the entry when focused"""
+        self.contact_entry.icursor(0)
+
+    def format_salary(self, event=None):
+        """Format salary with commas as user types"""
+        # Get current value without formatting
+        current_value = self.salary_entry.get()
+        
+        # Remove all non-digit characters except decimal point
+        if current_value:
+            # Remove Rs prefix if present
+            current_value = current_value.replace('Rs', '').strip()
+            
+            # Remove all commas for processing
+            digits = ''.join(filter(lambda x: x.isdigit() or x == '.', current_value))
+            
+            # Limit to 2 decimal places
+            if '.' in digits:
+                parts = digits.split('.')
+                if len(parts) > 1:
+                    digits = parts[0] + '.' + parts[1][:2]
+            
+            # Format with commas for thousands
+            if digits:
+                try:
+                    # Format the number with commas
+                    formatted = self.format_number_with_commas(digits)
+                    if formatted != current_value:
+                        self.var_salary.set(formatted)
+                        # Move cursor to end
+                        self.salary_entry.icursor(len(formatted))
+                except:
+                    pass
+
+    def format_salary_final(self, event=None):
+        """Final formatting when focus leaves salary field"""
+        current_value = self.var_salary.get()
+        if current_value:
+            # Remove Rs prefix and commas for processing
+            clean_value = current_value.replace('Rs', '').replace(',', '').strip()
+            
+            if clean_value:
+                try:
+                    # Format with commas and add Rs prefix
+                    formatted = self.format_number_with_commas(clean_value)
+                    self.var_salary.set(formatted)
+                except:
+                    pass
+
+    def format_number_with_commas(self, value):
+        """Format a number string with commas for thousands"""
+        try:
+            # If it's a decimal number
+            if '.' in value:
+                parts = value.split('.')
+                integer_part = parts[0]
+                decimal_part = parts[1] if len(parts) > 1 else ''
+                
+                # Format integer part with commas
+                if integer_part:
+                    integer_part = '{:,}'.format(int(integer_part))
+                
+                # Combine parts
+                result = integer_part
+                if decimal_part:
+                    result += '.' + decimal_part
+            else:
+                # Format whole number
+                result = '{:,}'.format(int(value))
+            
+            return result
+        except:
+            return value
+
     def generate_emp_id(self):
         """Generate a new unique EmpID starting with E followed by 4 digits"""
         con = sqlite3.connect(database=r'Possystem.db')
@@ -280,13 +382,13 @@ class EmployeeClass:
                 self.cnic_entry.icursor(len(formatted))
 
     def validate_contact(self, event=None):
-        """Validate Contact to accept exactly 11 digits"""
+        """Validate Contact to accept exactly 10 digits after +92"""
         current_text = self.var_contact.get()
         if current_text:
             # Remove non-digits
             digits = ''.join(filter(str.isdigit, current_text))
-            if len(digits) > 11:
-                digits = digits[:11]
+            if len(digits) > 10:
+                digits = digits[:10]
             self.var_contact.set(digits)
             # Move cursor to end
             self.contact_entry.icursor(len(digits))
@@ -314,8 +416,13 @@ class EmployeeClass:
         
         # Check Contact
         contact = self.var_contact.get()
-        if not contact or len(contact) != 11:
-            errors.append("Contact must be exactly 11 digits")
+        if not contact or len(contact) != 10:
+            errors.append("Contact must be exactly 10 digits after +92")
+        else:
+            # Add +92 prefix for validation
+            full_contact = "+92" + contact
+            if not re.match(r'^\+92[0-9]{10}$', full_contact):
+                errors.append("Contact must be in format +92XXXXXXXXXX")
         
         # Check Email
         if not self.var_email.get():
@@ -346,11 +453,12 @@ class EmployeeClass:
             errors.append("Address is required")
         
         # Check Salary
-        if not self.var_salary.get():
+        salary_value = self.var_salary.get().replace(',', '').replace('Rs', '').strip()
+        if not salary_value:
             errors.append("Salary is required")
         else:
             try:
-                salary_val = float(self.var_salary.get())
+                salary_val = float(salary_value)
                 if salary_val <= 0:
                     errors.append("Salary must be greater than 0")
             except:
@@ -390,19 +498,25 @@ class EmployeeClass:
                 messagebox.showerror("Error","This Email already exists in the system",parent=self.root)
                 return
             
+            # Format contact with +92 prefix
+            contact_full = "+92" + self.var_contact.get()
+            
+            # Clean salary value
+            salary_clean = self.var_salary.get().replace(',', '').replace('Rs', '').strip()
+            
             cur.execute("Insert into Employee(EmpID,Name,Email,Gender,CNIC,Contact,DOB,DOJ,Password,UserType,Address,Salary) values(?,?,?,?,?,?,?,?,?,?,?,?)",(
                                     self.var_EmpID.get(),
                                     self.var_name.get().strip(),
                                     self.var_email.get().strip(),
                                     self.var_gender.get(),
                                     cnic_clean,
-                                    self.var_contact.get(),
+                                    contact_full,
                                     self.var_DOB.get(),
                                     self.var_DOJ.get(),
                                     self.var_Password.get(),
                                     self.var_utype.get(),
                                     self.txt_address.get('1.0',END).strip(),
-                                    self.var_salary.get(),
+                                    salary_clean,
             ))
             con.commit()
             messagebox.showinfo("Success","Employee added successfully",parent=self.root)
@@ -429,13 +543,23 @@ class EmployeeClass:
             rows = cur.fetchall()
             self.EmployeeTable.delete(*self.EmployeeTable.get_children())
             for row in rows:
-                # Format CNIC for display
                 formatted_row = list(row)
+                
+                # Format CNIC for display
                 if row[4]:  # CNIC column
                     cnic = str(row[4])
                     if len(cnic) == 13:
                         formatted_cnic = f"{cnic[:5]}-{cnic[5:12]}-{cnic[12:]}"
                         formatted_row[4] = formatted_cnic
+                
+                # Format salary with Rs prefix and commas
+                if row[11]:  # Salary column
+                    try:
+                        salary_value = float(row[11])
+                        formatted_salary = "Rs " + '{:,.2f}'.format(salary_value)
+                        formatted_row[11] = formatted_salary
+                    except:
+                        formatted_row[11] = row[11]
                 
                 self.EmployeeTable.insert('',END,values=formatted_row)
         except Exception as ex:
@@ -460,8 +584,10 @@ class EmployeeClass:
             cnic = str(row[4])
             self.var_cnic.set(cnic)
             
-            # Set contact
+            # Set contact (remove +92 prefix for display)
             contact = str(row[5])
+            if contact.startswith('+92'):
+                contact = contact[3:]  # Remove +92 prefix
             self.var_contact.set(contact)
             
             # Set dates
@@ -485,7 +611,12 @@ class EmployeeClass:
             self.var_utype.set(row[9])
             self.txt_address.delete('1.0', END)
             self.txt_address.insert(END, row[10])
-            self.var_salary.set(row[11])
+            
+            # Set salary (remove Rs prefix for editing)
+            salary = str(row[11])
+            if salary.startswith('Rs'):
+                salary = salary[2:].strip()  # Remove Rs prefix
+            self.var_salary.set(salary)
             
             # Make EmpID editable for update
             self.txt_empid.config(state='normal')
@@ -519,18 +650,24 @@ class EmployeeClass:
                 messagebox.showerror("Error","This Email already exists for another employee",parent=self.root)
                 return
             
+            # Format contact with +92 prefix
+            contact_full = "+92" + self.var_contact.get()
+            
+            # Clean salary value
+            salary_clean = self.var_salary.get().replace(',', '').replace('Rs', '').strip()
+            
             cur.execute("Update employee set Name=?,Email=?,Gender=?,CNIC=?,Contact=?,DOB=?,DOJ=?,Password=?,UserType=?,Address=?,Salary=? where EmpID=?",(
                                     self.var_name.get().strip(),
                                     self.var_email.get().strip(),
                                     self.var_gender.get(),
                                     cnic_clean,
-                                    self.var_contact.get(),
+                                    contact_full,
                                     self.var_DOB.get(),
                                     self.var_DOJ.get(),
                                     self.var_Password.get(),
                                     self.var_utype.get(),
                                     self.txt_address.get('1.0',END).strip(),
-                                    self.var_salary.get(),
+                                    salary_clean,
                                     self.var_EmpID.get(),
             ))
             con.commit()
@@ -574,7 +711,7 @@ class EmployeeClass:
         self.var_email.set("")
         self.var_gender.set("Select")
         self.var_cnic.set("")
-        self.var_contact.set("")
+        self.var_contact.set("")  # Clear contact (only 10 digits part)
         self.var_DOB.set("")
         self.var_DOJ.set("")
         self.var_Password.set("")
@@ -616,6 +753,11 @@ class EmployeeClass:
             # Clean CNIC input
             if search_column == "CNIC":
                 search_text = search_text.replace("-", "")
+            
+            # For contact search, add +92 prefix
+            if search_column == "Contact":
+                if not search_text.startswith('+92'):
+                    search_text = "+92" + search_text
 
             # Use parameterized query to prevent SQL injection
             query = f"SELECT * FROM employee WHERE {search_column} LIKE ?"
@@ -630,6 +772,13 @@ class EmployeeClass:
                     # Format CNIC for display
                     if row[4] and len(row[4]) == 13:
                         formatted_row[4] = f"{row[4][:5]}-{row[4][5:12]}-{row[4][12:]}"
+                    # Format salary with Rs prefix and commas
+                    if row[11]:
+                        try:
+                            salary_value = float(row[11])
+                            formatted_row[11] = "Rs " + '{:,.2f}'.format(salary_value)
+                        except:
+                            pass
                     self.EmployeeTable.insert("", END, values=formatted_row)
             else:
                 messagebox.showinfo("Result", "No records found", parent=self.root)

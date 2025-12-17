@@ -29,9 +29,11 @@ def create_database():
                 Salary TEXT)''')
     
 
-    cur.execute("CREATE TABLE IF NOT EXISTS Category(CID INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS Category(CID INTEGER PRIMARY KEY, Name TEXT)")
     con.commit()
-    
+
+    cur.execute("CREATE TABLE IF NOT EXISTS Product(pid INTEGER PRIMARY KEY AUTOINCREMENT, Category TEXT, Supplier TEXT, Name TEXT, Price REAL, Quantity INTEGER, Status TEXT)")
+    con.commit()
 
     con.commit()
     con.close()

@@ -1,314 +1,459 @@
-from tkinter import*
-from PIL import Image,ImageTk #pip install pillow
-from tkinter import ttk,messagebox
+from tkinter import *
+from tkinter import ttk, messagebox
 import sqlite3
 
 class ProductClass:
-    def __init__(self,root):
+    def __init__(self, root):
         self.root = root
-        self.root.geometry("1100x550+280+180")  # Increased height for CNIC field
+        self.root.geometry("1100x500+280+130")
         self.root.title("Inventory Management System | Developed by Dukes Tech Services")
         self.root.config(bg="#E6FBFF")
         self.root.focus_force()
 
-
         self.var_searchby = StringVar()
         self.var_searchtxt = StringVar()
 
-        #===============Variables================
-        self.var_cat=StringVar()
-        self.var_sup=StringVar()
-        self.var_name=StringVar()
-        self.var_price=StringVar()
-        self.var_qty=StringVar()
-        self.var_status=StringVar()
+        # ===============Variables================
+        self.var_pid = StringVar()
+        self.var_cat = StringVar()
+        self.var_sup = StringVar()
+        self.var_name = StringVar()
+        self.var_price = StringVar()
+        self.var_qty = StringVar()  # This should match the database column name
+        self.var_status = StringVar()
+        
+        # Initialize empty lists
+        self.cat_list = []
+        self.sup_list = []
+        
+        # ===========Title==========
+        title = Label(self.root, text="Manage Product Details", font=("goudy old style", 18), bg="#0f4d7d", fg="white").pack(side=TOP, fill=X)
 
-        product_Frame=Frame(self.root,bd=3,relief=RIDGE,bg="White")
-        product_Frame.place(x=10,y=10,width=450,height=480)
+        # ===========Product Frame==========
+        product_Frame = Frame(self.root, bd=3, relief=RIDGE, bg="white")
+        product_Frame.place(x=10, y=40, width=450, height=400)
 
-        #=========Title==========
-        title=Label(product_Frame,text="Manage Product Details",font=("goudy old style",18),bg="#0f4d7d",fg="white").pack(side=TOP,fill=X)
+        lbl_category = Label(product_Frame, text="Category", font=("goudy old style", 15), bg="white").place(x=30, y=30)
+        lbl_supplier = Label(product_Frame, text="Supplier", font=("goudy old style", 15), bg="white").place(x=30, y=80)
+        lbl_product_name = Label(product_Frame, text="Name", font=("goudy old style", 15), bg="white").place(x=30, y=130)
+        lbl_price = Label(product_Frame, text="Price", font=("goudy old style", 15), bg="white").place(x=30, y=180)
+        lbl_quantity = Label(product_Frame, text="Quantity", font=("goudy old style", 15), bg="white").place(x=30, y=230)
+        lbl_status = Label(product_Frame, text="Status", font=("goudy old style", 15), bg="white").place(x=30, y=280)
 
-        lbl_category=Label(product_Frame,text="Category",font=("goudy old style",18),bg="white").place(x=30,y=60)
-        lbl_supplier=Label(product_Frame,text="Supplier",font=("goudy old style",18),bg="white").place(x=30,y=110)
-        lbl_product_name=Label(product_Frame,text="Name",font=("goudy old style",18),bg="white").place(x=30,y=160)
-        lbl_price=Label(product_Frame,text="Price",font=("goudy old style",18),bg="white").place(x=30,y=210)
-        lbl_quantity=Label(product_Frame,text="Quantity",font=("goudy old style",18),bg="white").place(x=30,y=260)
-        lbl_status=Label(product_Frame,text="Status",font=("goudy old style",18),bg="white").place(x=30,y=310)
+        # ===========Dropdowns and Entries==========
+        self.cmb_category = ttk.Combobox(product_Frame, textvariable=self.var_cat, 
+                                        state="readonly", justify=CENTER, font=("Times new Roman", 12))
+        self.cmb_category.place(x=150, y=30, width=200)
 
+        self.cmb_supplier = ttk.Combobox(product_Frame, textvariable=self.var_sup, 
+                                        state="readonly", justify=CENTER, font=("Times new Roman", 12))
+        self.cmb_supplier.place(x=150, y=80, width=200)
 
-        #===options====
-        cmb_search=ttk.Combobox(product_Frame,textvariable=self.var_cat,values=("Select"),state="readonly",justify=CENTER,font=("Times new Roman",15))
-        cmb_search.place(x=150,y=60,width=200)
-        cmb_search.current(0)
+        txt_name = Entry(product_Frame, textvariable=self.var_name, font=("Times new Roman", 12), bg="lightyellow")
+        txt_name.place(x=150, y=130, width=200)
 
-        cmb_supplier=ttk.Combobox(product_Frame,textvariable=self.var_sup,values=("Select"),state="readonly",justify=CENTER,font=("Times new Roman",15))
-        cmb_supplier.place(x=150,y=110,width=200)
-        cmb_supplier.current(0)
+        txt_price = Entry(product_Frame, textvariable=self.var_price, font=("Times new Roman", 12), bg="lightyellow")
+        txt_price.place(x=150, y=180, width=200)
 
-        txt_name=Entry(product_Frame,textvariable=self.var_name,font=("Times new Roman",15),bg="lightyellow").place(x=150,y=160,width=200)
-        txt_price=Entry(product_Frame,textvariable=self.var_price,font=("Times new Roman",15),bg="lightyellow").place(x=150,y=210,width=200)
-        txt_qty=Entry(product_Frame,textvariable=self.var_qty,font=("Times new Roman",15),bg="lightyellow").place(x=150,y=260,width=200)
+        txt_qty = Entry(product_Frame, textvariable=self.var_qty, font=("Times new Roman", 12), bg="lightyellow")
+        txt_qty.place(x=150, y=230, width=200)
 
-        cmb_status=ttk.Combobox(product_Frame,textvariable=self.var_status,values=("Active","Inactive"),state="readonly",justify=CENTER,font=("Times new Roman",15))
-        cmb_status.place(x=150,y=310,width=200)
-        cmb_status.current(0)
+        cmb_status = ttk.Combobox(product_Frame, textvariable=self.var_status, 
+                                 values=("Active", "Inactive"), state="readonly", 
+                                 justify=CENTER, font=("Times new Roman", 12))
+        cmb_status.place(x=150, y=280, width=200)
+        cmb_status.set("Active")
 
-        #====buttons=====
-        btn_add = Button(product_Frame,text="Save",command=self.add, font=("Aptos",15),bg="#2196f3",fg="White",cursor="hand2").place(x=10,y=400,width=100,height=40)
-        btn_update = Button(product_Frame,text="Update",command=self.update, font=("Aptos",15),bg="#4caf50",fg="White",cursor="hand2").place(x=120,y=400,width=100,height=40)
-        btn_delete = Button(product_Frame,text="Delete",command=self.delete, font=("Aptos",15),bg="#f44336",fg="White",cursor="hand2").place(x=230,y=400,width=100,height=40)
-        btn_clear = Button(product_Frame,text="Clear",command=self.clear, font=("Aptos",15),bg="#607d8b",fg="White",cursor="hand2").place(x=340,y=400,width=100,height=40)
+        # ===========Buttons==========
+        btn_add = Button(product_Frame, text="Save", command=self.add, 
+                        font=("Aptos", 12), bg="#2196f3", fg="White", cursor="hand2")
+        btn_add.place(x=10, y=330, width=100, height=35)
+        
+        btn_update = Button(product_Frame, text="Update", command=self.update, 
+                           font=("Aptos", 12), bg="#4caf50", fg="White", cursor="hand2")
+        btn_update.place(x=120, y=330, width=100, height=35)
+        
+        btn_delete = Button(product_Frame, text="Delete", command=self.delete, 
+                           font=("Aptos", 12), bg="#f44336", fg="White", cursor="hand2")
+        btn_delete.place(x=230, y=330, width=100, height=35)
+        
+        btn_clear = Button(product_Frame, text="Clear", command=self.clear, 
+                          font=("Aptos", 12), bg="#607d8b", fg="White", cursor="hand2")
+        btn_clear.place(x=340, y=330, width=100, height=35)
 
+        # ===========Search Frame==========
+        SearchFrame = LabelFrame(self.root, text="Search Product", 
+                                font=("goudy old style", 12, "bold"), bd=2, relief=RIDGE, bg="white")
+        SearchFrame.place(x=480, y=40, width=600, height=70)
 
-        #===searchFrame=====
-        SearchFrame=LabelFrame(self.root,text="Search Employee",font=("goudy old style",12,"bold"),bd=2,relief=RIDGE,bg="white")
-        SearchFrame.place(x=480,y=10,width=600,height=80)
+        cmb_search = ttk.Combobox(SearchFrame, textvariable=self.var_searchby, 
+                                 values=("Select", "Category", "Supplier", "Name"), 
+                                 state="readonly", justify=CENTER, font=("Times new Roman", 12))
+        cmb_search.place(x=10, y=10, width=180)
+        cmb_search.set("Select")
 
-        #===options====
-        cmb_search=ttk.Combobox(SearchFrame,textvariable=self.var_searchby,values=("Select","Category","Supplier","Name"),state="readonly",justify=CENTER,font=("Times new Roman",15))
-        cmb_search.place(x=10,y=10,width=180)
-        cmb_search.current(0)
+        txt_search = Entry(SearchFrame, textvariable=self.var_searchtxt, 
+                          font=("Aptos", 12), bg="lightyellow")
+        txt_search.place(x=200, y=10, width=180)
 
-        txt_search = Entry(SearchFrame,textvariable=self.var_searchtxt, font=("Aptos",15),bg="lightyellow").place(x=200, y=10)
-        btn_search = Button(SearchFrame,text="Search",command=self.search, font=("Aptos",15),bg="#4caf50",fg="White",cursor="hand2").place(x=410,y=9,width=150,height=30)
+        btn_search = Button(SearchFrame, text="Search", command=self.search, 
+                           font=("Aptos", 12), bg="#4caf50", fg="White", cursor="hand2")
+        btn_search.place(x=400, y=9, width=100, height=30)
+        
+        btn_showall = Button(SearchFrame, text="Show All", command=self.show, 
+                            font=("Aptos", 12), bg="#2196f3", fg="White", cursor="hand2")
+        btn_showall.place(x=510, y=9, width=100, height=30)
 
+        # ===========Product Table Frame==========
+        prod_frame = Frame(self.root, bd=3, relief=RIDGE)
+        prod_frame.place(x=480, y=100, width=600, height=390)
 
-    def add(self):
-        if not self.validate_all_fields():
-            return
-            
+        scrolly = Scrollbar(prod_frame, orient=VERTICAL)
+        scrollx = Scrollbar(prod_frame, orient=HORIZONTAL)
+
+        # FIXED: Column names match database schema
+        self.Product_Table = ttk.Treeview(prod_frame, columns=("pid", "Category", "Supplier", "Name", "Price", "Quantity", "Status"), 
+                                         yscrollcommand=scrolly.set, xscrollcommand=scrollx.set)
+        
+        scrollx.pack(side=BOTTOM, fill=X)
+        scrolly.pack(side=RIGHT, fill=Y)
+        scrollx.config(command=self.Product_Table.xview)
+        scrolly.config(command=self.Product_Table.yview)
+
+        self.Product_Table.heading("pid", text="Prod ID")
+        self.Product_Table.heading("Category", text="Category")
+        self.Product_Table.heading("Supplier", text="Supplier")
+        self.Product_Table.heading("Name", text="Name")
+        self.Product_Table.heading("Price", text="Price")
+        self.Product_Table.heading("Quantity", text="Quantity")
+        self.Product_Table.heading("Status", text="Status")
+
+        self.Product_Table["show"] = "headings"
+        self.Product_Table.column("pid", width=60)
+        self.Product_Table.column("Category", width=100)
+        self.Product_Table.column("Supplier", width=100)
+        self.Product_Table.column("Name", width=120)
+        self.Product_Table.column("Price", width=80)
+        self.Product_Table.column("Quantity", width=80)
+        self.Product_Table.column("Status", width=80)
+
+        self.Product_Table.pack(fill=BOTH, expand=1)
+        self.Product_Table.bind("<ButtonRelease-1>", self.get_data)
+        
+        # Initialize data
+        self.fetch_cat_sup()
+        self.show()
+        self.generate_pid()
+
+    def fetch_cat_sup(self):
+        """Fetch active categories and suppliers from database"""
         con = sqlite3.connect(database=r'Possystem.db')
         cur = con.cursor()
         try:
-            # Check if EmpID already exists
-            cur.execute("Select * from employee where EmpID=?",(self.var_EmpID.get(),))
-            row = cur.fetchone()
-            if row is not None:
-                messagebox.showerror("Error","This Employee ID already assigned, try different",parent=self.root)
-                return
+            # Clear existing lists
+            self.cat_list.clear()
+            self.sup_list.clear()
             
-            # Check if CNIC already exists
-            cnic_clean = self.var_cnic.get().replace('-', '')
-            cur.execute("Select * from employee where CNIC=?",(cnic_clean,))
-            row = cur.fetchone()
-            if row is not None:
-                messagebox.showerror("Error","This CNIC already exists in the system",parent=self.root)
-                return
+            # Check if Category table has Status column
+            try:
+                # Try to check for Status column
+                cur.execute("PRAGMA table_info(Category)")
+                columns = [col[1] for col in cur.fetchall()]
+                
+                if 'Status' in columns:
+                    cur.execute("SELECT Name FROM Category WHERE Status='Active' ORDER BY Name")
+                else:
+                    cur.execute("SELECT Name FROM Category ORDER BY Name")
+            except:
+                cur.execute("SELECT Name FROM Category ORDER BY Name")
             
-            # Check if Email already exists
-            cur.execute("Select * from employee where Email=?",(self.var_email.get(),))
-            row = cur.fetchone()
-            if row is not None:
-                messagebox.showerror("Error","This Email already exists in the system",parent=self.root)
-                return
+            categories = cur.fetchall()
+            self.cat_list = ["Select"] + [cat[0] for cat in categories]
             
-            cur.execute("Insert into Employee(EmpID,Name,Email,Gender,CNIC,Contact,DOB,DOJ,Password,UserType,Address,Salary) values(?,?,?,?,?,?,?,?,?,?,?,?)",(
-                                    self.var_EmpID.get(),
-                                    self.var_name.get().strip(),
-                                    self.var_email.get().strip(),
-                                    self.var_gender.get(),
-                                    cnic_clean,
-                                    self.var_contact.get(),
-                                    self.var_DOB.get(),
-                                    self.var_DOJ.get(),
-                                    self.var_Password.get(),
-                                    self.var_utype.get(),
-                                    self.txt_address.get('1.0',END).strip(),
-                                    self.var_salary.get(),
-            ))
-            con.commit()
-            messagebox.showinfo("Success","Employee added successfully",parent=self.root)
-            self.show()
-            self.clear()  # Clear form and generate new EmpID
-        except sqlite3.IntegrityError as e:
-            if "UNIQUE" in str(e):
-                if "CNIC" in str(e):
-                    messagebox.showerror("Error","CNIC already exists in the system",parent=self.root)
-                elif "Email" in str(e):
-                    messagebox.showerror("Error","Email already exists in the system",parent=self.root)
-            else:
-                messagebox.showerror("Error",f"Database error: {str(e)}",parent=self.root)
+            # Check if Supplier table has Status column
+            try:
+                cur.execute("PRAGMA table_info(Supplier)")
+                columns = [col[1] for col in cur.fetchall()]
+                
+                if 'Status' in columns:
+                    cur.execute("SELECT Name FROM Supplier WHERE Status='Active' ORDER BY Name")
+                else:
+                    cur.execute("SELECT Name FROM Supplier ORDER BY Name")
+            except:
+                cur.execute("SELECT Name FROM Supplier ORDER BY Name")
+            
+            suppliers = cur.fetchall()
+            self.sup_list = ["Select"] + [sup[0] for sup in suppliers]
+            
+            # Update combobox values
+            self.cmb_category['values'] = self.cat_list
+            self.cmb_supplier['values'] = self.sup_list
+            
+            # Set default selection
+            if self.cat_list:
+                self.cmb_category.set("Select")
+            if self.sup_list:
+                self.cmb_supplier.set("Select")
+                
         except Exception as ex:
-            messagebox.showerror("Error",f"Error due to: {str(ex)}",parent=self.root)
+            messagebox.showerror("Error", f"Error fetching data: {str(ex)}", parent=self.root)
+            # Set default values on error
+            self.cat_list = ["Select"]
+            self.sup_list = ["Select"]
+            self.cmb_category['values'] = self.cat_list
+            self.cmb_supplier['values'] = self.sup_list
+        finally:
+            if 'con' in locals():
+                con.close()
+
+    def refresh_lists(self):
+        """Refresh category and supplier lists"""
+        self.fetch_cat_sup()
+
+    def get_categories(self):
+        try:
+            con = sqlite3.connect(database=r'Possystem.db')
+            cur = con.cursor()
+            # Check if Status column exists
+            cur.execute("PRAGMA table_info(Category)")
+            columns = [col[1] for col in cur.fetchall()]
+            
+            if 'Status' in columns:
+                cur.execute("SELECT Name FROM Category WHERE Status='Active'")
+            else:
+                cur.execute("SELECT Name FROM Category")
+                
+            rows = cur.fetchall()
+            return ["Select"] + [row[0] for row in rows]
+        except:
+            return ["Select"]
+        finally:
+            if 'con' in locals():
+                con.close()
+
+    def get_suppliers(self):
+        try:
+            con = sqlite3.connect(database=r'Possystem.db')
+            cur = con.cursor()
+            # Check if Status column exists
+            cur.execute("PRAGMA table_info(Supplier)")
+            columns = [col[1] for col in cur.fetchall()]
+            
+            if 'Status' in columns:
+                cur.execute("SELECT Name FROM Supplier WHERE Status='Active'")
+            else:
+                cur.execute("SELECT Name FROM Supplier")
+                
+            rows = cur.fetchall()
+            return ["Select"] + [row[0] for row in rows]
+        except:
+            return ["Select"]
+        finally:
+            if 'con' in locals():
+                con.close()
+
+    def generate_pid(self):
+        try:
+            con = sqlite3.connect(database=r'Possystem.db')
+            cur = con.cursor()
+            cur.execute("SELECT MAX(pid) FROM product")
+            max_id = cur.fetchone()[0]
+            if max_id:
+                self.var_pid.set(f"P{int(max_id) + 1:03d}")
+            else:
+                self.var_pid.set("P001")
+        except:
+            self.var_pid.set("P001")
+        finally:
+            if 'con' in locals():
+                con.close()
+
+    def add(self):
+        if self.var_cat.get() == "Select" or self.var_sup.get() == "Select":
+            messagebox.showerror("Error", "Category and Supplier are required", parent=self.root)
+            return
+            
+        if not self.var_name.get() or not self.var_price.get() or not self.var_qty.get():
+            messagebox.showerror("Error", "All fields are required", parent=self.root)
+            return
+
+        try:
+            price = float(self.var_price.get())
+            qty = int(self.var_qty.get())
+        except ValueError:
+            messagebox.showerror("Error", "Price must be a number and Quantity must be an integer", parent=self.root)
+            return
+
+        con = sqlite3.connect(database=r'Possystem.db')
+        cur = con.cursor()
+        try:
+            # Check if product with same name already exists
+            cur.execute("SELECT * FROM product WHERE Name=?", (self.var_name.get(),))
+            row = cur.fetchone()
+            if row:
+                messagebox.showerror("Error", "Product already exists", parent=self.root)
+                return
+
+            # FIXED: Using correct column names that match database schema
+            cur.execute("INSERT INTO product (Category, Supplier, Name, Price, Quantity, Status) VALUES (?, ?, ?, ?, ?, ?)",
+                       (self.var_cat.get(), self.var_sup.get(), 
+                        self.var_name.get(), price, qty, self.var_status.get()))
+            con.commit()
+            messagebox.showinfo("Success", "Product added successfully", parent=self.root)
+            self.show()
+            self.generate_pid()  # Regenerate new PID after add
+            self.clear()
+        except Exception as ex:
+            messagebox.showerror("Error", f"Error adding product: {str(ex)}", parent=self.root)
         finally:
             con.close()
 
     def update(self):
-        if not self.validate_all_fields():
+        if not self.var_pid.get():
+            messagebox.showerror("Error", "Select a product to update", parent=self.root)
             return
             
+        if self.var_cat.get() == "Select" or self.var_sup.get() == "Select":
+            messagebox.showerror("Error", "Category and Supplier are required", parent=self.root)
+            return
+            
+        if not self.var_name.get() or not self.var_price.get() or not self.var_qty.get():
+            messagebox.showerror("Error", "All fields are required", parent=self.root)
+            return
+
+        try:
+            price = float(self.var_price.get())
+            qty = int(self.var_qty.get())
+        except ValueError:
+            messagebox.showerror("Error", "Price must be a number and Quantity must be an integer", parent=self.root)
+            return
+
         con = sqlite3.connect(database=r'Possystem.db')
         cur = con.cursor()
         try:
-            # Check if EmpID exists
-            cur.execute("Select * from employee where EmpID=?",(self.var_EmpID.get(),))
-            row = cur.fetchone()
-            if row is None:
-                messagebox.showerror("Error","Invalid Employee ID",parent=self.root)
-                return
+            # Get the numeric part of PID (remove 'P' prefix)
+            pid_num = int(self.var_pid.get()[1:]) if self.var_pid.get().startswith('P') else int(self.var_pid.get())
             
-            # Check if CNIC already exists for another employee
-            cnic_clean = self.var_cnic.get().replace('-', '')
-            cur.execute("Select * from employee where CNIC=? AND EmpID!=?",(cnic_clean, self.var_EmpID.get()))
+            # Check if product with same name exists for other product
+            cur.execute("SELECT * FROM product WHERE Name=? AND pid!=?", 
+                       (self.var_name.get(), pid_num))
             row = cur.fetchone()
-            if row is not None:
-                messagebox.showerror("Error","This CNIC already exists for another employee",parent=self.root)
+            if row:
+                messagebox.showerror("Error", "Product name already exists for another product", parent=self.root)
                 return
-            
-            # Check if Email already exists for another employee
-            cur.execute("Select * from employee where Email=? AND EmpID!=?",(self.var_email.get(), self.var_EmpID.get()))
-            row = cur.fetchone()
-            if row is not None:
-                messagebox.showerror("Error","This Email already exists for another employee",parent=self.root)
-                return
-            
-            cur.execute("Update employee set Name=?,Email=?,Gender=?,CNIC=?,Contact=?,DOB=?,DOJ=?,Password=?,UserType=?,Address=?,Salary=? where EmpID=?",(
-                                    self.var_name.get().strip(),
-                                    self.var_email.get().strip(),
-                                    self.var_gender.get(),
-                                    cnic_clean,
-                                    self.var_contact.get(),
-                                    self.var_DOB.get(),
-                                    self.var_DOJ.get(),
-                                    self.var_Password.get(),
-                                    self.var_utype.get(),
-                                    self.txt_address.get('1.0',END).strip(),
-                                    self.var_salary.get(),
-                                    self.var_EmpID.get(),
-            ))
+
+            # FIXED: Using correct column names
+            cur.execute("UPDATE product SET Category=?, Supplier=?, Name=?, Price=?, Quantity=?, Status=? WHERE pid=?",
+                       (self.var_cat.get(), self.var_sup.get(), self.var_name.get(), 
+                        price, qty, self.var_status.get(), pid_num))
             con.commit()
-            messagebox.showinfo("Success","Employee updated successfully",parent=self.root)
+            messagebox.showinfo("Success", "Product updated successfully", parent=self.root)
             self.show()
-            self.txt_empid.config(state='readonly')  # Make read-only again
-        except sqlite3.IntegrityError as e:
-            if "UNIQUE" in str(e):
-                messagebox.showerror("Error","Duplicate entry. CNIC or Email already exists for another employee.",parent=self.root)
-            else:
-                messagebox.showerror("Error",f"Database error: {str(e)}",parent=self.root)
         except Exception as ex:
-            messagebox.showerror("Error",f"Error updating employee: {str(ex)}",parent=self.root)
+            messagebox.showerror("Error", f"Error updating product: {str(ex)}", parent=self.root)
         finally:
             con.close()
 
     def delete(self):
-        if not self.var_EmpID.get():
-            messagebox.showerror("Error","Please select an employee to delete",parent=self.root)
+        if not self.var_pid.get():
+            messagebox.showerror("Error", "Select a product to delete", parent=self.root)
             return
             
         con = sqlite3.connect(database=r'Possystem.db')
         cur = con.cursor()
         try:
-            op = messagebox.askyesno("Confirm","Do you really want to delete this employee?",parent=self.root)
-            if op:
-                cur.execute("DELETE FROM employee WHERE EmpID=?",(self.var_EmpID.get(),))
+            # Get the numeric part of PID
+            pid_num = int(self.var_pid.get()[1:]) if self.var_pid.get().startswith('P') else int(self.var_pid.get())
+            
+            confirm = messagebox.askyesno("Confirm", "Do you really want to delete this product?", parent=self.root)
+            if confirm:
+                cur.execute("DELETE FROM product WHERE pid=?", (pid_num,))
                 con.commit()
-                if cur.rowcount > 0:
-                    messagebox.showinfo("Delete","Employee deleted successfully",parent=self.root)
-                    self.clear()
-                else:
-                    messagebox.showerror("Error","Employee not found",parent=self.root)
+                messagebox.showinfo("Success", "Product deleted successfully", parent=self.root)
+                self.clear()
+                self.generate_pid()
         except Exception as ex:
-            messagebox.showerror("Error",f"Error deleting employee: {str(ex)}",parent=self.root)
+            messagebox.showerror("Error", f"Error deleting product: {str(ex)}", parent=self.root)
         finally:
             con.close()
 
     def clear(self):
         self.var_name.set("")
-        self.var_email.set("")
-        self.var_gender.set("Select")
-        self.var_cnic.set("")
-        self.var_contact.set("")
-        self.var_DOB.set("")
-        self.var_DOJ.set("")
-        self.var_Password.set("")
-        self.var_utype.set("Admin")
-        self.txt_address.delete('1.0',END)
-        self.var_salary.set("")
+        self.var_price.set("")
+        self.var_qty.set("")
+        self.var_cat.set("Select")
+        self.var_sup.set("Select")
+        self.var_status.set("Active")
         self.var_searchtxt.set("")
         self.var_searchby.set("Select")
-        
-        # Reset calendars to today's date
-        today = datetime.now()
-        self.dob_calendar.set_date(today)
-        self.doj_calendar.set_date(today)
-        
-        # Generate new EmpID
-        self.generate_emp_id()
-        self.show()
-        self.txt_empid.config(state='readonly')
+        self.Product_Table.selection_remove(self.Product_Table.selection())
+        self.generate_pid()
 
+    def get_data(self, ev):
+        f = self.Product_Table.focus()
+        content = self.Product_Table.item(f)
+        row = content['values']
+        if row:
+            self.var_pid.set(f"P{row[0]:03d}")
+            self.var_cat.set(row[1])
+            self.var_sup.set(row[2])
+            self.var_name.set(row[3])
+            self.var_price.set(row[4])
+            self.var_qty.set(row[5])
+            self.var_status.set(row[6])
 
     def show(self):
         con = sqlite3.connect(database=r'Possystem.db')
         cur = con.cursor()
         try:
-            cur.execute("Select * from employee ORDER BY EmpID")
+            cur.execute("SELECT * FROM product ORDER BY pid")
             rows = cur.fetchall()
-            self.EmployeeTable.delete(*self.EmployeeTable.get_children())
+            self.Product_Table.delete(*self.Product_Table.get_children())
             for row in rows:
-                # Format CNIC for display
-                formatted_row = list(row)
-                if row[4]:  # CNIC column
-                    cnic = str(row[4])
-                    if len(cnic) == 13:
-                        formatted_cnic = f"{cnic[:5]}-{cnic[5:12]}-{cnic[12:]}"
-                        formatted_row[4] = formatted_cnic
-                
-                self.EmployeeTable.insert('',END,values=formatted_row)
+                # Format PID with 'P' prefix for display
+                formatted_row = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+                self.Product_Table.insert('', END, values=formatted_row)
         except Exception as ex:
-            messagebox.showerror("Error",f"Error displaying data: {str(ex)}",parent=self.root)
+            messagebox.showerror("Error", f"Error loading products: {str(ex)}", parent=self.root)
         finally:
             con.close()
 
     def search(self):
+        if self.var_searchby.get() == "Select":
+            messagebox.showerror("Error", "Select search criteria", parent=self.root)
+            return
+            
+        if not self.var_searchtxt.get().strip():
+            self.show()
+            return
+
         con = sqlite3.connect(database=r'Possystem.db')
         cur = con.cursor()
         try:
-            if self.var_searchby.get() == "Select":
-                messagebox.showerror("Error", "Select Search by option", parent=self.root)
-                return
-
-            if not self.var_searchtxt.get().strip():
-                messagebox.showerror("Error", "Search input is required", parent=self.root)
-                return
-
-            search_text = self.var_searchtxt.get().strip()
-            search_column = self.var_searchby.get()
-
-            # Auto-fix EmpID input
-            if search_column == "EmpID" and not search_text.startswith("E"):
-                search_text = "E" + search_text
-
-            # Clean CNIC input
-            if search_column == "CNIC":
-                search_text = search_text.replace("-", "")
-
-            # Use parameterized query to prevent SQL injection
-            query = f"SELECT * FROM employee WHERE {search_column} LIKE ?"
-            cur.execute(query, ("%" + search_text + "%",))
+            search_by = self.var_searchby.get()
+            search_text = f"%{self.var_searchtxt.get().strip()}%"
+            
+            if search_by == "Category":
+                cur.execute("SELECT * FROM product WHERE Category LIKE ?", (search_text,))
+            elif search_by == "Supplier":
+                cur.execute("SELECT * FROM product WHERE Supplier LIKE ?", (search_text,))
+            elif search_by == "Name":
+                cur.execute("SELECT * FROM product WHERE Name LIKE ?", (search_text,))
+            
             rows = cur.fetchall()
-
-            self.EmployeeTable.delete(*self.EmployeeTable.get_children())
-
+            self.Product_Table.delete(*self.Product_Table.get_children())
+            
             if rows:
                 for row in rows:
-                    formatted_row = list(row)
-                    # Format CNIC for display
-                    if row[4] and len(row[4]) == 13:
-                        formatted_row[4] = f"{row[4][:5]}-{row[4][5:12]}-{row[4][12:]}"
-                    self.EmployeeTable.insert("", END, values=formatted_row)
+                    formatted_row = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+                    self.Product_Table.insert('', END, values=formatted_row)
             else:
-                messagebox.showinfo("Result", "No records found", parent=self.root)
-
+                messagebox.showinfo("No Results", "No products found", parent=self.root)
+                
         except Exception as ex:
             messagebox.showerror("Error", f"Error searching: {str(ex)}", parent=self.root)
         finally:
             con.close()
-
-
-
-
 
 
 if __name__ == "__main__":
