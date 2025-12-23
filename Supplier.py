@@ -77,6 +77,11 @@ class SupplierClass:
                                 font=("goudy old style", 15), bg="lightyellow")
         self.txt_contact.place(x=150, y=230, width=180)
         
+        # Add +92 placeholder text
+        self.txt_contact.insert(0, "+92")
+        self.txt_contact.bind('<FocusIn>', self.on_contact_focus_in)
+        self.txt_contact.bind('<FocusOut>', self.on_contact_focus_out)
+        
         # Bind the key release event for real-time validation
         self.txt_contact.bind('<KeyRelease>', self.validate_contact_length)
 
@@ -193,18 +198,74 @@ class SupplierClass:
         finally:
             con.close()
 
-    def validate_contact_length(self, event=None):
-        """Automatically restrict contact input to 11 digits"""
-        # Get current text and remove all non-digit characters
+    def on_contact_focus_in(self, event):
+        """Handle focus in event for contact field"""
         current_text = self.var_contact.get()
-        digits_only = re.sub(r'\D', '', current_text)
+        if current_text == "+92":
+            # Set cursor position after +92
+            self.txt_contact.icursor(3)
+
+    def on_contact_focus_out(self, event):
+        """Handle focus out event for contact field"""
+        current_text = self.var_contact.get()
+        if not current_text.startswith("+92"):
+            # Auto-prepend +92 if missing
+            digits_only = re.sub(r'\D', '', current_text)
+            if digits_only:
+                if len(digits_only) > 10:
+                    digits_only = digits_only[:10]
+                self.var_contact.set(f"+92{digits_only}")
+            else:
+                self.var_contact.set("+92")
+
+    def validate_contact_length(self, event=None):
+        """Automatically restrict contact input to +92 followed by 10 digits"""
+        # Get current text
+        current_text = self.var_contact.get()
         
-        # If we have more than 11 digits, truncate to 11
-        if len(digits_only) > 11:
-            digits_only = digits_only[:11]
+        # If text is shorter than +92, set it to +92
+        if len(current_text) < 3:
+            self.var_contact.set("+92")
+            self.txt_contact.icursor(3)
+            return
+        
+        # Ensure it starts with +92
+        if not current_text.startswith("+92"):
+            # Extract digits and reconstruct
+            digits_only = re.sub(r'\D', '', current_text)
+            if digits_only:
+                if len(digits_only) > 12:
+                    digits_only = digits_only[:12]
+                
+                # Check if it starts with 92
+                if digits_only.startswith('92'):
+                    remaining_digits = digits_only[2:]
+                else:
+                    remaining_digits = digits_only
+                
+                # Limit to 10 digits after +92
+                if len(remaining_digits) > 10:
+                    remaining_digits = remaining_digits[:10]
+                
+                self.var_contact.set(f"+92{remaining_digits}")
+            else:
+                self.var_contact.set("+92")
             
-            # Update the variable (this will trigger the entry to update)
-            self.var_contact.set(digits_only)
+            self.txt_contact.icursor(len(self.var_contact.get()))
+            return
+        
+        # Get the part after +92
+        after_plus92 = current_text[3:]
+        
+        # Remove any non-digit characters from the part after +92
+        digits_after = re.sub(r'\D', '', after_plus92)
+        
+        # If we have more than 10 digits after +92, truncate to 10
+        if len(digits_after) > 10:
+            digits_after = digits_after[:10]
+            
+            # Update the variable
+            self.var_contact.set(f"+92{digits_after}")
             
             # Move cursor to end
             self.txt_contact.icursor(END)
@@ -214,27 +275,31 @@ class SupplierClass:
             self.root.after(500, lambda: self.txt_contact.config(bg="lightyellow"))
     
     def validate_contact_format(self, contact):
-        """Validate that contact number is exactly 11 digits and contains only numbers"""
-        # Remove any spaces, dashes, or other characters
-        clean_contact = re.sub(r'\D', '', contact)
+        """Validate that contact number is exactly +92 followed by 10 digits"""
+        # Check if it starts with +92
+        if not contact.startswith("+92"):
+            return False, "Contact number must start with +92"
         
-        # Check if it's exactly 11 digits
-        if len(clean_contact) != 11:
-            return False, "Contact number must be exactly 11 digits"
+        # Get the part after +92
+        after_plus92 = contact[3:]
         
-        # Check if it contains only numbers
-        if not clean_contact.isdigit():
-            return False, "Contact number must contain only numbers"
+        # Check if it has exactly 10 digits after +92
+        if len(after_plus92) != 10:
+            return False, "Contact number must have exactly 10 digits after +92"
         
-        # Optional: Check if it starts with a valid prefix (for Pakistan: 03)
-        if not clean_contact.startswith('03'):
-            # You can remove or modify this check based on your country's phone number format
+        # Check if the part after +92 contains only numbers
+        if not after_plus92.isdigit():
+            return False, "Contact number must contain only numbers after +92"
+        
+        # Optional: You can add more specific validation for Pakistan numbers
+        # For example, check if the first digit after +92 is 3
+        if not after_plus92.startswith('3'):
             response = messagebox.askyesno("Warning", 
-                "Contact number doesn't start with '03'. Do you want to continue?")
+                "Pakistani mobile numbers usually start with +923. Do you want to continue?")
             if not response:
                 return False, "Contact number validation cancelled"
         
-        return True, clean_contact
+        return True, contact
 
     def add(self):
         con = sqlite3.connect(database='Possystem.db')
@@ -264,9 +329,6 @@ class SupplierClass:
                 messagebox.showerror("Validation Error", validation_result, parent=self.root)
                 return
             
-            # Use the cleaned contact number
-            cleaned_contact = validation_result
-            
             # Get the current invoice number
             invoice_no = self.var_SuppInv.get()
             
@@ -286,13 +348,13 @@ class SupplierClass:
                     return
             
             # Debug print
-            print(f"Attempting to insert: Invoice={invoice_no}, Name={self.var_name.get().strip()}, Contact={cleaned_contact}")
+            print(f"Attempting to insert: Invoice={invoice_no}, Name={self.var_name.get().strip()}, Contact={contact}")
             
             # Insert with auto-generated Invoice No
             cur.execute("INSERT INTO Supplier(SuppInv, Name, Contact, Description) VALUES(?, ?, ?, ?)", (
                 invoice_no,
                 self.var_name.get().strip(),
-                cleaned_contact,
+                contact,
                 description,
             ))
             con.commit()
@@ -375,9 +437,6 @@ class SupplierClass:
                 messagebox.showerror("Validation Error", validation_result, parent=self.root)
                 return
             
-            # Use the cleaned contact number
-            cleaned_contact = validation_result
-            
             # Check if supplier exists
             cur.execute("SELECT * FROM Supplier WHERE SuppInv=?", (self.var_SuppInv.get(),))
             if not cur.fetchone():
@@ -386,7 +445,7 @@ class SupplierClass:
             
             cur.execute("UPDATE Supplier SET Name=?, Contact=?, Description=? WHERE SuppInv=?", (
                 self.var_name.get().strip(),
-                cleaned_contact,
+                contact,
                 description,
                 self.var_SuppInv.get(),
             ))
@@ -426,7 +485,7 @@ class SupplierClass:
 
     def clear(self):
         self.var_name.set("")
-        self.var_contact.set("")
+        self.var_contact.set("+92")
         self.txt_desc.delete('1.0', END)
         self.var_searchtxt.set("")
         self.var_searchby.set("Select")

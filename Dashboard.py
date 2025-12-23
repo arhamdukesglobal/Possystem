@@ -41,7 +41,7 @@ class IMS:
             bg="red",
             fg="white",
             cursor="hand2"
-        ).place(x=1150, y=10, height=50, width=150)
+        ).place(x=1550, y=10, height=50, width=150)
 
         # Clock
         self.lbl_clock = Label(
