@@ -105,9 +105,17 @@ class Invoice_Class:
         Customer_Frame.place(x=500,y=110,width=530,height=70)
 
         cTitle=Label(Customer_Frame,text="Customer Details",font=("bahnschrift light semicondensed",15),bg="lightgray").pack(side=TOP,fill=X)
-        lbl_name=Label(Product_Frame2,text="Product Name",font=("Aptos Display",15),bg="white").place(x=5,y=35)
-        txt_name=Entry(Product_Frame2,textvariable=self.var_search,font=("Aptos Display",15,"bold"),bg="lightyellow").place(x=150,y=47,width=150,height=22)
+        lbl_name=Label(Customer_Frame,text="Customer Name",font=("Aptos Display",15,"bold"),bg="white").place(x=5,y=35)
+        txt_name=Entry(Customer_Frame,textvariable=self.var_name,font=("Aptos Display",15),bg="lightyellow").place(x=160,y=37,width=150,height=22)
 
+        lbl_contact=Label(Customer_Frame,text="Contact No.",font=("Aptos Display",15,"bold"),bg="white").place(x=270,y=35)
+        txt_contact=Entry(Customer_Frame,textvariable=self.var_contact,font=("Aptos Display",15),bg="lightyellow").place(x=380,y=37,width=140,height=22)
+
+        Cal_Cart_Frame = Frame(self.root,bd=4,relief=RIDGE,bg="white")
+        Cal_Cart_Frame.place(x=500,y=180,width=530,height=400)
+
+        Cal_Frame = Frame(Cal_Cart_Frame,bd=4,relief=RIDGE,bg="white")
+        Cal_Frame.place(x=5,y=10,width=268,height=360)
 
 
 if __name__ == "__main__":
