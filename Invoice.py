@@ -63,7 +63,8 @@ class Invoice_Class:
 
         lbl_search=Label(Product_Frame2,text="Product Name",font=("Aptos Display",15,"bold"),bg="white").place(x=5,y=45)
         txt_search=Entry(Product_Frame2,textvariable=self.var_search,font=("Aptos Display",15,"bold"),bg="lightyellow").place(x=150,y=47,width=150,height=22)
-        btn_Search=Button(Product_Frame2,text="Search",font=("Aptos Display",15,"bold"),bg="#2196F3",fg="white").place(x=310,y=45,width=100,height=30)
+        btn_Search=Button(Product_Frame2,text="Search",font=("Aptos Display",15,"bold"),bg="#2196F3",fg="white",cursor="hand2").place(x=310,y=45,width=100,height=30)
+        btn_show_all=Button(Product_Frame2,text="Show All",font=("Aptos Display",15,"bold"),bg="#083531",fg="white",cursor="hand2").place(x=310,y=10,width=100,height=30)
 
 
 
