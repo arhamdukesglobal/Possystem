@@ -1,6 +1,7 @@
 import tkinter
 from tkinter import *
 from PIL import Image, ImageTk
+from tkinter import ttk,messagebox
 
 class Invoice_Class:
     def __init__(self, root):
@@ -52,7 +53,7 @@ class Invoice_Class:
         #===========Product Frame===========
         self.var_search=StringVar()
         Product_Frame1 = Frame(self.root,bd=4,relief=RIDGE,bg="white")
-        Product_Frame1.place(x=10,y=110,width=500,height=550)
+        Product_Frame1.place(x=10,y=110,width=480,height=550)
 
         pTitle=Label(Product_Frame1,text="All Products",font=("bahnschrift light semicondensed",20,"bold"),bg="#262626",fg="white").pack(side=TOP,fill=X)
 
@@ -65,6 +66,47 @@ class Invoice_Class:
         txt_search=Entry(Product_Frame2,textvariable=self.var_search,font=("Aptos Display",15,"bold"),bg="lightyellow").place(x=150,y=47,width=150,height=22)
         btn_Search=Button(Product_Frame2,text="Search",font=("Aptos Display",15,"bold"),bg="#2196F3",fg="white",cursor="hand2").place(x=310,y=45,width=100,height=30)
         btn_show_all=Button(Product_Frame2,text="Show All",font=("Aptos Display",15,"bold"),bg="#083531",fg="white",cursor="hand2").place(x=310,y=10,width=100,height=30)
+
+
+        #==============Product Details Frame=============
+        Product_Frame3 = Frame(Product_Frame1, bd=3, relief=RIDGE)
+        Product_Frame3.place(x=2, y=140, width=450, height=375)
+
+        scrolly = Scrollbar(Product_Frame3, orient=VERTICAL)
+        scrollx = Scrollbar(Product_Frame3, orient=HORIZONTAL)
+
+        self.ProductTable = ttk.Treeview(Product_Frame3, columns=("Prod_ID", "Name", "Price", "QTY", "Status"),yscrollcommand=scrolly.set, xscrollcommand=scrollx.set)
+        scrollx.pack(side=BOTTOM, fill=X)
+        scrolly.pack(side=RIGHT, fill=Y)
+        scrollx.config(command=self.ProductTable.xview)
+        scrolly.config(command=self.ProductTable.yview)
+        
+        self.ProductTable.heading("Prod_ID", text="Prod_ID")
+        self.ProductTable.heading("Name", text="Name")
+        self.ProductTable.heading("Price", text="Price")
+        self.ProductTable.heading("QTY", text="QTY")
+        self.ProductTable.heading("Status", text="Status")
+        self.ProductTable["show"] = "headings"
+
+        self.ProductTable.column("Prod_ID", width=90)
+        self.ProductTable.column("Name", width=100)
+        self.ProductTable.column("Price", width=100)
+        self.ProductTable.column("QTY", width=100)
+        self.ProductTable.column("Status", width=100)
+
+        self.ProductTable.pack(fill=BOTH, expand=1)
+        #self.ProductTable.bind("<ButtonRelease-1>", self.get_data)
+        lbl_note=Label(Product_Frame3,text="Note: 'Enter 0 Quantity to remove product from the cart'",font=("goudy old style",12),anchor='w',bg="white",fg="red").pack(side=BOTTOM,fill=X)
+
+        #===========Customer Frame===========
+        self.var_name=StringVar()
+        self.var_contact=StringVar()
+        Customer_Frame = Frame(self.root,bd=4,relief=RIDGE,bg="white")
+        Customer_Frame.place(x=500,y=110,width=530,height=70)
+
+        cTitle=Label(Customer_Frame,text="Customer Details",font=("bahnschrift light semicondensed",15),bg="lightgray").pack(side=TOP,fill=X)
+        lbl_name=Label(Product_Frame2,text="Product Name",font=("Aptos Display",15),bg="white").place(x=5,y=35)
+        txt_name=Entry(Product_Frame2,textvariable=self.var_search,font=("Aptos Display",15,"bold"),bg="lightyellow").place(x=150,y=47,width=150,height=22)
 
 
 
