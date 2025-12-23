@@ -1,5 +1,3 @@
-#======================Employee.py================
-
 #Employee.py
 from tkinter import*
 from PIL import Image,ImageTk #pip install pillow
@@ -128,6 +126,7 @@ class EmployeeClass:
         cmb_utype=ttk.Combobox(self.root,textvariable=self.var_utype,values=("Admin","Employee"),state="readonly",justify=CENTER,font=("Times new Roman",15))
         cmb_utype.place(x=850,y=230,width=180)
         cmb_utype.current(0)
+        cmb_utype.bind('<<ComboboxSelected>>', self.on_utype_change)
 
         #====row4=====
         lbl_address=Label(self.root,text="Address",font=("goudy old style",15),bg="white").place(x=50,y=270)
@@ -153,7 +152,7 @@ class EmployeeClass:
         self.salary_entry.bind('<KeyRelease>', self.format_salary)
         self.salary_entry.bind('<FocusOut>', self.format_salary_final)
         
-        # Password entry
+        # Password entry - initially enabled for Admin
         self.txt_pass=Entry(self.root,textvariable=self.var_Password,font=("goudy old style",15),bg="lightyellow", show="*")
         self.txt_pass.place(x=850,y=270,width=180)
 
@@ -235,13 +234,56 @@ class EmployeeClass:
 
     def on_dob_select(self, event):
         self.var_DOB.set(self.dob_calendar.get_date().strftime("%d/%m/%Y"))
+        # Automatically validate dates after DOB selection
+        if self.var_DOB.get() and self.var_DOJ.get():
+            self.validate_dates()
 
     def on_doj_select(self, event):
         self.var_DOJ.set(self.doj_calendar.get_date().strftime("%d/%m/%Y"))
+        # Automatically validate dates after DOJ selection
+        if self.var_DOB.get() and self.var_DOJ.get():
+            self.validate_dates()
+
+    def validate_dates(self):
+        """Validate that DOB year is always smaller than DOJ year"""
+        try:
+            dob_str = self.var_DOB.get()
+            doj_str = self.var_DOJ.get()
+            
+            if dob_str and doj_str:
+                dob_date = datetime.strptime(dob_str, "%d/%m/%Y")
+                doj_date = datetime.strptime(doj_str, "%d/%m/%Y")
+                
+                # Check if DOB is after or equal to DOJ
+                if dob_date >= doj_date:
+                    messagebox.showwarning("Date Validation", 
+                                         "Date of Birth must be earlier than Joining Date.\n"
+                                         "Please adjust the dates.", parent=self.root)
+                    return False
+                
+                # Check if employee is at least 18 years old at joining
+                age_at_joining = doj_date.year - dob_date.year
+                if age_at_joining < 18:
+                    messagebox.showwarning("Age Validation",
+                                         "Employee must be at least 18 years old at joining date.\n"
+                                         "Please adjust the dates.", parent=self.root)
+                    return False
+            return True
+        except ValueError:
+            return True  # If dates are not properly formatted, skip validation
 
     def on_contact_focus(self, event):
         """Set cursor to the beginning of the entry when focused"""
         self.contact_entry.icursor(0)
+
+    def on_utype_change(self, event):
+        """Handle user type change - enable/disable password field"""
+        if self.var_utype.get() == "Admin":
+            self.txt_pass.config(state='normal', bg='lightyellow')
+            self.var_Password.set("")
+        else:
+            self.txt_pass.config(state='disabled', bg='lightgray')
+            self.var_Password.set("N/A")  # Set default value for Employee
 
     def format_salary(self, event=None):
         """Format salary with commas as user types"""
@@ -439,14 +481,21 @@ class EmployeeClass:
         # Check DOJ
         if not self.var_DOJ.get():
             errors.append("Joining Date is required")
+        else:
+            # Validate dates
+            if not self.validate_dates():
+                errors.append("Date of Birth must be earlier than Joining Date")
         
         # Check User Type
         if not self.var_utype.get():
             errors.append("User Type is required")
         
-        # Check Password
-        if not self.var_Password.get():
-            errors.append("Password is required")
+        # Check Password - only for Admin
+        if self.var_utype.get() == "Admin":
+            if not self.var_Password.get() or self.var_Password.get() == "N/A":
+                errors.append("Password is required for Admin")
+            elif len(self.var_Password.get()) < 4:
+                errors.append("Password must be at least 4 characters for Admin")
         
         # Check Address
         if not self.txt_address.get('1.0', END).strip():
@@ -504,6 +553,11 @@ class EmployeeClass:
             # Clean salary value
             salary_clean = self.var_salary.get().replace(',', '').replace('Rs', '').strip()
             
+            # Set password based on user type
+            password_value = self.var_Password.get()
+            if self.var_utype.get() == "Employee":
+                password_value = "N/A"
+            
             cur.execute("Insert into Employee(EmpID,Name,Email,Gender,CNIC,Contact,DOB,DOJ,Password,UserType,Address,Salary) values(?,?,?,?,?,?,?,?,?,?,?,?)",(
                                     self.var_EmpID.get(),
                                     self.var_name.get().strip(),
@@ -513,7 +567,7 @@ class EmployeeClass:
                                     contact_full,
                                     self.var_DOB.get(),
                                     self.var_DOJ.get(),
-                                    self.var_Password.get(),
+                                    password_value,
                                     self.var_utype.get(),
                                     self.txt_address.get('1.0',END).strip(),
                                     salary_clean,
@@ -584,7 +638,7 @@ class EmployeeClass:
             cnic = str(row[4])
             self.var_cnic.set(cnic)
             
-            # Set contact (remove +92 prefix for display)
+            # Set contact (remove +92 prefix for display) - FEATURE 1
             contact = str(row[5])
             if contact.startswith('+92'):
                 contact = contact[3:]  # Remove +92 prefix
@@ -607,8 +661,16 @@ class EmployeeClass:
             except:
                 pass
             
+            # Set Password - FEATURE 3
             self.var_Password.set(row[8])
+            
+            # Set User Type and handle password field
             self.var_utype.set(row[9])
+            if row[9] == "Admin":
+                self.txt_pass.config(state='normal', bg='lightyellow')
+            else:
+                self.txt_pass.config(state='disabled', bg='lightgray')
+            
             self.txt_address.delete('1.0', END)
             self.txt_address.insert(END, row[10])
             
@@ -656,6 +718,11 @@ class EmployeeClass:
             # Clean salary value
             salary_clean = self.var_salary.get().replace(',', '').replace('Rs', '').strip()
             
+            # Set password based on user type
+            password_value = self.var_Password.get()
+            if self.var_utype.get() == "Employee":
+                password_value = "N/A"
+            
             cur.execute("Update employee set Name=?,Email=?,Gender=?,CNIC=?,Contact=?,DOB=?,DOJ=?,Password=?,UserType=?,Address=?,Salary=? where EmpID=?",(
                                     self.var_name.get().strip(),
                                     self.var_email.get().strip(),
@@ -664,7 +731,7 @@ class EmployeeClass:
                                     contact_full,
                                     self.var_DOB.get(),
                                     self.var_DOJ.get(),
-                                    self.var_Password.get(),
+                                    password_value,
                                     self.var_utype.get(),
                                     self.txt_address.get('1.0',END).strip(),
                                     salary_clean,
@@ -725,6 +792,10 @@ class EmployeeClass:
         today = datetime.now()
         self.dob_calendar.set_date(today)
         self.doj_calendar.set_date(today)
+        
+        # Reset password field based on default user type (Admin)
+        self.txt_pass.config(state='normal', bg='lightyellow')
+        self.var_Password.set("")
         
         # Generate new EmpID
         self.generate_emp_id()
