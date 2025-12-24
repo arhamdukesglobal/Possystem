@@ -256,7 +256,7 @@ class Invoice_Class:
         """Update the clock label with current date and time"""
         now = datetime.datetime.now()
         date_str = now.strftime("%d/%m/%Y")
-        time_str = now.strftime("%H:%M:%S")
+        time_str = now.strftime("%I:%M:%S")
         self.lbl_clock.config(text=f"Welcome to Inventory Management System     Date: {date_str}     Time: {time_str}")
         self.root.after(1000, self.update_clock)
 

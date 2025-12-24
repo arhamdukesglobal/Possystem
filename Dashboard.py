@@ -1,3 +1,4 @@
+from datetime import datetime
 import tkinter
 from tkinter import *
 from PIL import Image, ImageTk
@@ -6,6 +7,10 @@ from Supplier import SupplierClass
 from Category import CategoryClass
 from Product import ProductClass
 from Sales import SalesClass
+import sqlite3
+from tkinter import messagebox
+import time
+import os
 
 class IMS:
     def __init__(self, root):
@@ -141,6 +146,8 @@ class IMS:
             fg="white"
         ).pack(side=BOTTOM, fill=X)
 
+        self.update_content()
+
     # Window openers
     def Employee(self):
         self.new_win = Toplevel(self.root)
@@ -161,6 +168,39 @@ class IMS:
     def Sales(self):
         self.new_win = Toplevel(self.root)
         self.new_obj = SalesClass(self.new_win)
+
+    def update_content(self):
+        con=sqlite3.connect(database=r'Possystem.db')
+        cur=con.cursor()
+        try:
+            cur.execute("Select * from Product")
+            product=cur.fetchall()
+            self.lbl_product.config(text=f"Total Products\n[ {str(len(product))} ]")
+
+            cur.execute("Select * from Supplier")
+            supplier=cur.fetchall()
+            self.lbl_supplier.config(text=f"Total Suppliers\n[ {str(len(supplier))} ]")
+
+            cur.execute("Select * from Category")
+            category=cur.fetchall()
+            self.lbl_category.config(text=f"Total Categories\n[ {str(len(category))} ]")
+
+            cur.execute("Select * from Employee")
+            employee=cur.fetchall()
+            self.lbl_employee.config(text=f"Total Employees\n[ {str(len(employee))} ]")
+
+            self.lbl_sales.config(text=f"Total Sales\n[{str(len(os.listdir('bills')))}]")
+
+        except Exception as ex:
+            messagebox.showerror("Error", f"Error due to: {str(ex)}", parent=self.root)
+
+        now = datetime.datetime.now()
+        date_str = now.strftime("%d/%m/%Y")
+        time_str = now.strftime("%I:%M:%S")
+        self.lbl_clock.config(text=f"Welcome to Inventory Management System     Date: {date_str}     Time: {time_str}")
+        self.root.after(1000, self.update_content)
+
+
 
 
 
