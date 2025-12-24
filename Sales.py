@@ -45,7 +45,7 @@ class SalesClass:
 
 
         scrolly2=Scrollbar(Invoice_Frame, orient=VERTICAL)
-        self.Invoice_area = Text(Invoice_Frame, font=("goudy old style",15), bg="lightyellow",yscrollcommand=scrolly2.set)
+        self.Invoice_area = Text(Invoice_Frame, bg="lightyellow",yscrollcommand=scrolly2.set)
         scrolly2.pack(side=RIGHT, fill=Y)
         scrolly2.config(command=self.Invoice_area.yview)
         self.Invoice_area.pack(fill=BOTH, expand=1)
