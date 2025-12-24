@@ -11,6 +11,7 @@ import sqlite3
 from tkinter import messagebox
 import time
 import os
+import datetime
 
 class IMS:
     def __init__(self, root):
@@ -45,7 +46,8 @@ class IMS:
             font=("Arial", 15, "bold"),
             bg="red",
             fg="white",
-            cursor="hand2"
+            cursor="hand2",
+            command=self.logout
         ).place(x=1550, y=10, height=50, width=150)
 
         # Clock
@@ -168,6 +170,79 @@ class IMS:
     def Sales(self):
         self.new_win = Toplevel(self.root)
         self.new_obj = SalesClass(self.new_win)
+
+    def logout(self):
+        """Logout and return to login screen"""
+        from tkinter import Toplevel, Label, Entry, Button  # If not already imported
+        
+        # Ask for confirmation
+        if not messagebox.askyesno("Confirm", "Logout from system?", parent=self.root):
+            return
+        
+        # Close all windows except main
+        for widget in self.root.winfo_children():
+            if isinstance(widget, Toplevel):
+                widget.destroy()
+        
+        # Hide main window
+        self.root.withdraw()
+        
+        # Create login window
+        self.show_login_screen()
+        
+    def show_login_screen(self):
+        """Display login screen after logout"""
+        login_window = Toplevel(self.root)
+        login_window.title("Login - Inventory Management System")
+        login_window.geometry("400x500+500+200")
+        login_window.config(bg="#E6FBFF")
+        login_window.resizable(False, False)
+        
+        # Make it modal
+        login_window.grab_set()
+        
+        # Add title
+        Label(login_window, text="LOGIN", font=("bahnschrift", 30, "bold"), 
+            bg="#87CEEB", fg="black").pack(fill=X, pady=20)
+        
+        # Username
+        Label(login_window, text="Username:", font=("Arial", 15), 
+            bg="#E6FBFF").place(x=50, y=100)
+        username_entry = Entry(login_window, font=("Arial", 15), bd=3)
+        username_entry.place(x=50, y=130, width=300)
+        
+        # Password
+        Label(login_window, text="Password:", font=("Arial", 15), 
+            bg="#E6FBFF").place(x=50, y=180)
+        password_entry = Entry(login_window, font=("Arial", 15), bd=3, show="*")
+        password_entry.place(x=50, y=210, width=300)
+        
+        # Login Button
+        Button(login_window, text="Login", font=("Arial", 15, "bold"),
+            bg="green", fg="white", cursor="hand2",
+            command=lambda: self.login(login_window, username_entry.get(), password_entry.get())
+            ).place(x=150, y=280, width=100, height=40)
+        
+        # Cancel Button
+        Button(login_window, text="Cancel", font=("Arial", 15),
+            bg="gray", fg="white", cursor="hand2",
+            command=lambda: self.cancel_logout(login_window)
+            ).place(x=150, y=340, width=100, height=40)
+        
+    def login(self, login_window, username, password):
+        """Handle login attempt"""
+        # Add your authentication logic here
+        if username == "admin" and password == "admin":  # Default for testing
+            login_window.destroy()
+            self.root.deiconify()  # Show main window again
+            messagebox.showinfo("Welcome", f"Welcome back, {username}!", parent=self.root)
+        else:
+            messagebox.showerror("Error", "Invalid username or password", parent=login_window)
+
+    def cancel_logout(self, login_window):
+        """Cancel logout and return to main window"""
+        login_window.destroy()
+        self.root.deiconify()  # Show main window again
 
     def update_content(self):
         con=sqlite3.connect(database=r'Possystem.db')
