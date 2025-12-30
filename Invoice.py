@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox
 import sqlite3
 import time
 import datetime
+import re
 
 class Invoice_Class:
     def __init__(self, root):
@@ -33,20 +34,21 @@ class Invoice_Class:
             font=("bahnschrift light semicondensed", 40, "bold"),
             bg="#87CEEB",
             fg="black",
-            anchor="n",
+            anchor="w",  # Changed to left align
             padx=20
         )
         title.place(x=0, y=0, relwidth=1, height=70)
 
-        # Logout button
+        # Logout button - FIXED: Moved to right side and added command
         Button(
             self.root,
             text="Logout",
             font=("Arial", 15, "bold"),
             bg="red",
             fg="white",
-            cursor="hand2"
-        ).place(x=1150, y=10, height=50, width=150)
+            cursor="hand2",
+            command=self.logout
+        ).place(x=1200, y=10, height=50, width=150)  # Adjusted position
 
         # Clock - FIXED: Update time function
         self.lbl_clock = Label(
@@ -117,7 +119,22 @@ class Invoice_Class:
         txt_name = Entry(Customer_Frame, textvariable=self.var_cname, font=("Aptos Display", 15), bg="lightyellow").place(x=160, y=37, width=150, height=22)
 
         lbl_contact = Label(Customer_Frame, text="Contact No.", font=("Aptos Display", 15, "bold"), bg="white").place(x=270, y=35)
-        txt_contact = Entry(Customer_Frame, textvariable=self.var_contact, font=("Aptos Display", 15), bg="lightyellow").place(x=380, y=37, width=140, height=22)
+        
+        # Create a frame for the contact number with +92 prefix
+        contact_frame = Frame(Customer_Frame, bg="white")
+        contact_frame.place(x=380, y=35, width=140, height=25)
+        
+        # Add +92 label
+        prefix_label = Label(contact_frame, text="+92", font=("Aptos Display", 15, "bold"), bg="lightgray", fg="black")
+        prefix_label.pack(side=LEFT, fill=Y)
+        
+        # Create entry for remaining 10 digits
+        self.contact_entry = Entry(contact_frame, textvariable=self.var_contact, font=("Aptos Display", 15), bg="lightyellow", width=10)
+        self.contact_entry.pack(side=LEFT, fill=BOTH, expand=True)
+        
+        # Bind validation to contact entry
+        self.contact_entry.bind('<KeyRelease>', self.validate_contact)
+        self.var_contact.trace('w', self.format_contact)
 
         Cal_Cart_Frame = Frame(self.root, bd=4, relief=RIDGE, bg="white")
         Cal_Cart_Frame.place(x=500, y=180, width=550, height=400)
@@ -252,6 +269,11 @@ class Invoice_Class:
         self.show()
 
 #================All Functions================
+    def logout(self):
+        """Logout function - asks for confirmation and closes the application"""
+        if messagebox.askyesno("Logout", "Are you sure you want to logout?", parent=self.root):
+            self.root.destroy()
+
     def update_clock(self):
         """Update the clock label with current date and time"""
         now = datetime.datetime.now()
@@ -259,6 +281,45 @@ class Invoice_Class:
         time_str = now.strftime("%I:%M:%S")
         self.lbl_clock.config(text=f"Welcome to Inventory Management System     Date: {date_str}     Time: {time_str}")
         self.root.after(1000, self.update_clock)
+
+    def validate_contact(self, event=None):
+        """Validate contact number to ensure only digits and max 10 digits"""
+        current_text = self.var_contact.get()
+        
+        # Remove any non-digit characters
+        digits_only = re.sub(r'\D', '', current_text)
+        
+        # Limit to 10 digits
+        if len(digits_only) > 10:
+            digits_only = digits_only[:10]
+        
+        # Update the variable
+        self.var_contact.set(digits_only)
+        
+        # Change background color based on validation
+        if len(digits_only) == 10:
+            self.contact_entry.config(bg="lightgreen")
+        elif len(digits_only) > 0:
+            self.contact_entry.config(bg="lightyellow")
+        else:
+            self.contact_entry.config(bg="lightyellow")
+        
+        return True
+
+    def format_contact(self, *args):
+        """Format contact number as +92XXXXXXXXXX when needed"""
+        current_value = self.var_contact.get()
+        if len(current_value) == 10 and current_value.isdigit():
+            # Format as +92XXXXXXXXXX when bill is generated
+            return "+92" + current_value
+        return current_value
+
+    def get_contact_for_bill(self):
+        """Get formatted contact number for bill display"""
+        contact = self.var_contact.get().strip()
+        if len(contact) == 10 and contact.isdigit():
+            return "+92" + contact
+        return contact
 
     def get_input(self, num):
         xnum = self.var_cal_input.get() + str(num)
@@ -439,7 +500,15 @@ class Invoice_Class:
         if self.var_cname.get() == '' or self.var_contact.get() == '':
             messagebox.showerror("Error", "Customer details are required", parent=self.root)
             return
-        elif len(self.cart_list) == 0:
+        
+        # Validate contact number
+        contact = self.var_contact.get().strip()
+        if len(contact) != 10 or not contact.isdigit():
+            messagebox.showerror("Error", "Contact number must be exactly 10 digits\nExample: 3001234567", parent=self.root)
+            self.contact_entry.focus()
+            return
+            
+        if len(self.cart_list) == 0:
             messagebox.showerror("Error", "Please add product to the cart", parent=self.root)
             return
         else:
@@ -478,10 +547,6 @@ class Invoice_Class:
                     cur.execute("UPDATE product SET Status='Inactive' WHERE pid=?", (pid,))
             
             con.commit()
-            messagebox.showinfo("Success", "Inventory updated successfully!", parent=self.root)
-            
-            # Refresh the product list to show updated quantities
-            self.show()
             
         except Exception as ex:
             messagebox.showerror("Error", f"Error updating inventory: {str(ex)}", parent=self.root)
@@ -496,7 +561,7 @@ class Invoice_Class:
     \t Phone No. +923*******63 , Lahore-54000
     {str("="*47)}
     Customer Name: {self.var_cname.get()}
-    Phone No. : {self.var_contact.get()}
+    Phone No. : {self.get_contact_for_bill()}
     Bill No. : {str(self.invoice)}\t\tDate: {str(time.strftime("%d/%m/%Y"))}
     {str("="*47)}
     Product Name\t\tQTY\tPrice
@@ -550,6 +615,7 @@ class Invoice_Class:
             self.var_qty.set('')
             self.var_stock.set('')
             self.lbl_inStock.config(text="In Stock")
+            self.contact_entry.config(bg="lightyellow")  # Reset contact field color
             self.show_cart()
             self.txt_bill_area.delete('1.0', END)
             self.bill_updates()
@@ -582,20 +648,16 @@ class Invoice_Class:
                 invoice_num = str(int(time.strftime("%H%M%S")) + int(time.strftime("%d%m%Y")))
             
             # Save to file
+            import os
+            if not os.path.exists('bills'):
+                os.makedirs('bills')
+                
             file_name = f'bills/{invoice_num}.txt'
             with open(file_name, 'w') as fp:
                 fp.write(bill_text)
             
             # Show success message
             messagebox.showinfo("Saved & Print", f"Bill No. : {invoice_num}\n\n1. Saved to: {file_name}\n2. Sent to printer", parent=self.root)
-            
-            # In a real application, you would add printer code here
-            # Example printer code (uncomment and modify for your printer):
-            # import win32print
-            # import win32ui
-            # printer_name = win32print.GetDefaultPrinter()
-            # hprinter = win32print.OpenPrinter(printer_name)
-            # # ... printer setup code ...
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save/print bill: {str(e)}", parent=self.root)
