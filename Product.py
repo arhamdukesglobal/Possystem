@@ -19,7 +19,7 @@ class ProductClass:
         self.var_sup = StringVar()
         self.var_name = StringVar()
         self.var_price = StringVar()
-        self.var_qty = StringVar()  # This should match the database column name
+        self.var_qty = StringVar()
         self.var_status = StringVar()
         
         # Initialize empty lists
@@ -111,7 +111,6 @@ class ProductClass:
         scrolly = Scrollbar(prod_frame, orient=VERTICAL)
         scrollx = Scrollbar(prod_frame, orient=HORIZONTAL)
 
-        # FIXED: Column names match database schema
         self.Product_Table = ttk.Treeview(prod_frame, columns=("pid", "Category", "Supplier", "Name", "Price", "Quantity", "Status"), 
                                          yscrollcommand=scrolly.set, xscrollcommand=scrollx.set)
         
@@ -156,7 +155,6 @@ class ProductClass:
             
             # Check if Category table has Status column
             try:
-                # Try to check for Status column
                 cur.execute("PRAGMA table_info(Category)")
                 columns = [col[1] for col in cur.fetchall()]
                 
@@ -253,17 +251,32 @@ class ProductClass:
                 con.close()
 
     def generate_pid(self):
+        """Generate the next available PID (not based on max, but based on gaps)"""
         try:
             con = sqlite3.connect(database=r'Possystem.db')
             cur = con.cursor()
-            cur.execute("SELECT MAX(pid) FROM product")
-            max_id = cur.fetchone()[0]
-            if max_id:
-                self.var_pid.set(f"P{int(max_id) + 1:03d}")
-            else:
-                self.var_pid.set("P001")
-        except:
-            self.var_pid.set("P001")
+            cur.execute("SELECT pid FROM product ORDER BY pid")
+            rows = cur.fetchall()
+            
+            if not rows:
+                self.var_pid.set("001")
+                return
+            
+            # Find the first available number starting from 1
+            existing_ids = [int(row[0]) for row in rows if row[0].isdigit()]
+            
+            # Look for gaps in the sequence
+            for i in range(1, len(existing_ids) + 2):  # +2 to go one beyond current max
+                if i not in existing_ids:
+                    self.var_pid.set(f"{i:03d}")
+                    return
+                    
+            # If no gaps found, use next number after max
+            self.var_pid.set(f"{max(existing_ids) + 1:03d}")
+            
+        except Exception as ex:
+            messagebox.showerror("Error", f"Error generating PID: {str(ex)}", parent=self.root)
+            self.var_pid.set("001")
         finally:
             if 'con' in locals():
                 con.close()
@@ -294,14 +307,19 @@ class ProductClass:
                 messagebox.showerror("Error", "Product already exists", parent=self.root)
                 return
 
-            # FIXED: Using correct column names that match database schema
-            cur.execute("INSERT INTO product (Category, Supplier, Name, Price, Quantity, Status) VALUES (?, ?, ?, ?, ?, ?)",
-                       (self.var_cat.get(), self.var_sup.get(), 
+            # Use the generated PID
+            pid_value = self.var_pid.get().lstrip('0') or '0'  # Remove leading zeros
+            if not pid_value.isdigit():
+                pid_value = '0'
+                
+            # Insert with the specified PID
+            cur.execute("INSERT INTO product (pid, Category, Supplier, Name, Price, Quantity, Status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                       (int(pid_value), self.var_cat.get(), self.var_sup.get(), 
                         self.var_name.get(), price, qty, self.var_status.get()))
             con.commit()
             messagebox.showinfo("Success", "Product added successfully", parent=self.root)
             self.show()
-            self.generate_pid()  # Regenerate new PID after add
+            self.generate_pid()  # Generate next available PID
             self.clear()
         except Exception as ex:
             messagebox.showerror("Error", f"Error adding product: {str(ex)}", parent=self.root)
@@ -331,8 +349,13 @@ class ProductClass:
         con = sqlite3.connect(database=r'Possystem.db')
         cur = con.cursor()
         try:
-            # Get the numeric part of PID (remove 'P' prefix)
-            pid_num = int(self.var_pid.get()[1:]) if self.var_pid.get().startswith('P') else int(self.var_pid.get())
+            # Get the PID (it's already stored as integer in database)
+            pid_value = self.var_pid.get().lstrip('0') or '0'
+            if not pid_value.isdigit():
+                messagebox.showerror("Error", "Invalid Product ID", parent=self.root)
+                return
+                
+            pid_num = int(pid_value)
             
             # Check if product with same name exists for other product
             cur.execute("SELECT * FROM product WHERE Name=? AND pid!=?", 
@@ -342,7 +365,6 @@ class ProductClass:
                 messagebox.showerror("Error", "Product name already exists for another product", parent=self.root)
                 return
 
-            # FIXED: Using correct column names
             cur.execute("UPDATE product SET Category=?, Supplier=?, Name=?, Price=?, Quantity=?, Status=? WHERE pid=?",
                        (self.var_cat.get(), self.var_sup.get(), self.var_name.get(), 
                         price, qty, self.var_status.get(), pid_num))
@@ -362,8 +384,13 @@ class ProductClass:
         con = sqlite3.connect(database=r'Possystem.db')
         cur = con.cursor()
         try:
-            # Get the numeric part of PID
-            pid_num = int(self.var_pid.get()[1:]) if self.var_pid.get().startswith('P') else int(self.var_pid.get())
+            # Get the PID
+            pid_value = self.var_pid.get().lstrip('0') or '0'
+            if not pid_value.isdigit():
+                messagebox.showerror("Error", "Invalid Product ID", parent=self.root)
+                return
+                
+            pid_num = int(pid_value)
             
             confirm = messagebox.askyesno("Confirm", "Do you really want to delete this product?", parent=self.root)
             if confirm:
@@ -371,11 +398,35 @@ class ProductClass:
                 con.commit()
                 messagebox.showinfo("Success", "Product deleted successfully", parent=self.root)
                 self.clear()
-                self.generate_pid()
+                # After deletion, we need to regenerate IDs for the remaining products
+                self.renumber_pids()
+                self.generate_pid()  # Generate new PID for next addition
+                self.show()  # Refresh the display
         except Exception as ex:
             messagebox.showerror("Error", f"Error deleting product: {str(ex)}", parent=self.root)
         finally:
             con.close()
+
+    def renumber_pids(self):
+        """Renumber all product IDs sequentially starting from 1"""
+        try:
+            con = sqlite3.connect(database=r'Possystem.db')
+            cur = con.cursor()
+            
+            # Get all products ordered by current pid
+            cur.execute("SELECT * FROM product ORDER BY pid")
+            rows = cur.fetchall()
+            
+            # Renumber sequentially starting from 1
+            for new_pid, row in enumerate(rows, 1):
+                cur.execute("UPDATE product SET pid=? WHERE pid=?", (new_pid, row[0]))
+            
+            con.commit()
+        except Exception as ex:
+            messagebox.showerror("Error", f"Error renumbering products: {str(ex)}", parent=self.root)
+        finally:
+            if 'con' in locals():
+                con.close()
 
     def clear(self):
         self.var_name.set("")
@@ -394,7 +445,10 @@ class ProductClass:
         content = self.Product_Table.item(f)
         row = content['values']
         if row:
-            self.var_pid.set(f"P{row[0]:03d}")
+            # Display PID without formatting
+            pid_value = row[0]
+            # Convert to string and pad with zeros if needed
+            self.var_pid.set(f"{int(pid_value):03d}")
             self.var_cat.set(row[1])
             self.var_sup.set(row[2])
             self.var_name.set(row[3])
@@ -410,8 +464,9 @@ class ProductClass:
             rows = cur.fetchall()
             self.Product_Table.delete(*self.Product_Table.get_children())
             for row in rows:
-                # Format PID with 'P' prefix for display
-                formatted_row = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+                # Format PID with leading zeros for display
+                formatted_pid = f"{row[0]:03d}"
+                formatted_row = (formatted_pid, row[1], row[2], row[3], row[4], row[5], row[6])
                 self.Product_Table.insert('', END, values=formatted_row)
         except Exception as ex:
             messagebox.showerror("Error", f"Error loading products: {str(ex)}", parent=self.root)
@@ -434,18 +489,19 @@ class ProductClass:
             search_text = f"%{self.var_searchtxt.get().strip()}%"
             
             if search_by == "Category":
-                cur.execute("SELECT * FROM product WHERE Category LIKE ?", (search_text,))
+                cur.execute("SELECT * FROM product WHERE Category LIKE ? ORDER BY pid", (search_text,))
             elif search_by == "Supplier":
-                cur.execute("SELECT * FROM product WHERE Supplier LIKE ?", (search_text,))
+                cur.execute("SELECT * FROM product WHERE Supplier LIKE ? ORDER BY pid", (search_text,))
             elif search_by == "Name":
-                cur.execute("SELECT * FROM product WHERE Name LIKE ?", (search_text,))
+                cur.execute("SELECT * FROM product WHERE Name LIKE ? ORDER BY pid", (search_text,))
             
             rows = cur.fetchall()
             self.Product_Table.delete(*self.Product_Table.get_children())
             
             if rows:
                 for row in rows:
-                    formatted_row = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+                    formatted_pid = f"{row[0]:03d}"
+                    formatted_row = (formatted_pid, row[1], row[2], row[3], row[4], row[5], row[6])
                     self.Product_Table.insert('', END, values=formatted_row)
             else:
                 messagebox.showinfo("No Results", "No products found", parent=self.root)
