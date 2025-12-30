@@ -26,7 +26,7 @@ class CategoryClass:
 
         #========Category Details===========
         cat_frame = Frame(self.root, bd=3, relief=RIDGE)
-        cat_frame.place(x=700, y=100, width=380, height=100)
+        cat_frame.place(x=700, y=100, width=500, height=700)
 
         scrolly = Scrollbar(cat_frame, orient=VERTICAL)
         scrollx = Scrollbar(cat_frame, orient=HORIZONTAL)
