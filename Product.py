@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import ttk, messagebox
 import sqlite3
+import locale
 
 class ProductClass:
     def __init__(self, root):
@@ -22,6 +23,9 @@ class ProductClass:
         self.var_qty = StringVar()
         self.var_status = StringVar()
         
+        # Price variables
+        self.price_without_format = ""  # Store raw price without commas
+        
         # Initialize empty lists
         self.cat_list = []
         self.sup_list = []
@@ -35,10 +39,10 @@ class ProductClass:
 
         lbl_category = Label(product_Frame, text="Category", font=("goudy old style", 15), bg="white").place(x=30, y=30)
         lbl_supplier = Label(product_Frame, text="Supplier", font=("goudy old style", 15), bg="white").place(x=30, y=80)
-        lbl_product_name = Label(product_Frame, text="Name", font=("goudy old style", 15), bg="white").place(x=30, y=130)
-        lbl_price = Label(product_Frame, text="Price", font=("goudy old style", 15), bg="white").place(x=30, y=180)
-        lbl_quantity = Label(product_Frame, text="Quantity", font=("goudy old style", 15), bg="white").place(x=30, y=230)
-        lbl_status = Label(product_Frame, text="Status", font=("goudy old style", 15), bg="white").place(x=30, y=280)
+        lbl_product_name = Label(product_Frame, text="Prod Name", font=("goudy old style", 15), bg="white").place(x=30, y=130)
+        lbl_price = Label(product_Frame, text="Prod Price", font=("goudy old style", 15), bg="white").place(x=30, y=180)
+        lbl_quantity = Label(product_Frame, text="Prod Quantity", font=("goudy old style", 15), bg="white").place(x=30, y=230)
+        lbl_status = Label(product_Frame, text="Prod Status", font=("goudy old style", 15), bg="white").place(x=30, y=280)
 
         # ===========Dropdowns and Entries==========
         self.cmb_category = ttk.Combobox(product_Frame, textvariable=self.var_cat, 
@@ -52,8 +56,22 @@ class ProductClass:
         txt_name = Entry(product_Frame, textvariable=self.var_name, font=("Times new Roman", 12), bg="lightyellow")
         txt_name.place(x=150, y=130, width=200)
 
-        txt_price = Entry(product_Frame, textvariable=self.var_price, font=("Times new Roman", 12), bg="lightyellow")
-        txt_price.place(x=150, y=180, width=200)
+        # Price frame with Rs symbol
+        price_frame = Frame(product_Frame, bg="white")
+        price_frame.place(x=150, y=180, width=200, height=30)
+        
+        # Rs label
+        rs_label = Label(price_frame, text="Rs.", font=("Times new Roman", 12, "bold"), bg="white")
+        rs_label.pack(side=LEFT, padx=(0, 5))
+        
+        # Price entry with comma formatting
+        self.txt_price = Entry(price_frame, font=("Times new Roman", 12), bg="lightyellow", justify=RIGHT)
+        self.txt_price.pack(side=LEFT, fill=BOTH, expand=TRUE)
+        
+        # Bind events for comma formatting
+        self.txt_price.bind('<KeyRelease>', self.format_price_with_commas)
+        self.txt_price.bind('<FocusIn>', self.on_price_focus_in)
+        self.txt_price.bind('<FocusOut>', self.on_price_focus_out)
 
         txt_qty = Entry(product_Frame, textvariable=self.var_qty, font=("Times new Roman", 12), bg="lightyellow")
         txt_qty.place(x=150, y=230, width=200)
@@ -143,6 +161,79 @@ class ProductClass:
         self.fetch_cat_sup()
         self.show()
         self.generate_pid()
+
+    def format_price_with_commas(self, event=None):
+        """Format price with commas as user types"""
+        try:
+            # Get current text and cursor position
+            current_text = self.txt_price.get()
+            cursor_pos = self.txt_price.index(INSERT)
+            
+            # Remove existing commas and non-numeric characters except decimal point
+            clean_text = ''
+            has_decimal = False
+            for char in current_text:
+                if char.isdigit():
+                    clean_text += char
+                elif char == '.' and not has_decimal:
+                    clean_text += char
+                    has_decimal = True
+                elif char == ',':
+                    continue
+            
+            # Save the raw price (without commas)
+            self.price_without_format = clean_text
+            
+            # Format with commas
+            if clean_text:
+                # Split integer and decimal parts
+                if '.' in clean_text:
+                    integer_part, decimal_part = clean_text.split('.')
+                else:
+                    integer_part = clean_text
+                    decimal_part = ''
+                
+                # Add commas to integer part
+                formatted_integer = ''
+                for i, digit in enumerate(reversed(integer_part)):
+                    if i > 0 and i % 3 == 0:
+                        formatted_integer = ',' + formatted_integer
+                    formatted_integer = digit + formatted_integer
+                
+                # Combine integer and decimal parts
+                formatted_price = formatted_integer
+                if decimal_part:
+                    formatted_price += '.' + decimal_part
+                
+                # Update the entry
+                self.txt_price.delete(0, END)
+                self.txt_price.insert(0, formatted_price)
+                
+                # Try to restore cursor position
+                try:
+                    self.txt_price.icursor(cursor_pos)
+                except:
+                    pass
+        except Exception as e:
+            print(f"Error formatting price: {e}")
+
+    def on_price_focus_in(self, event=None):
+        """When price field gets focus, store current value"""
+        self.price_without_format = self.txt_price.get().replace(',', '')
+
+    def on_price_focus_out(self, event=None):
+        """When price field loses focus, ensure proper formatting"""
+        self.format_price_with_commas()
+
+    def get_price_value(self):
+        """Get the numeric price value from the formatted field"""
+        try:
+            price_text = self.txt_price.get().replace(',', '')
+            if not price_text:
+                return None
+            return float(price_text)
+        except ValueError:
+            return None
 
     def fetch_cat_sup(self):
         """Fetch active categories and suppliers from database"""
@@ -262,8 +353,20 @@ class ProductClass:
                 self.var_pid.set("001")
                 return
             
-            # Find the first available number starting from 1
-            existing_ids = [int(row[0]) for row in rows if row[0].isdigit()]
+            # Convert all pids to integers (they might be strings or integers)
+            existing_ids = []
+            for row in rows:
+                try:
+                    # Convert to int whether it's string or already int
+                    pid_value = int(row[0]) if row[0] is not None else 0
+                    existing_ids.append(pid_value)
+                except (ValueError, TypeError):
+                    # Skip invalid entries
+                    continue
+            
+            if not existing_ids:
+                self.var_pid.set("001")
+                return
             
             # Look for gaps in the sequence
             for i in range(1, len(existing_ids) + 2):  # +2 to go one beyond current max
@@ -286,12 +389,16 @@ class ProductClass:
             messagebox.showerror("Error", "Category and Supplier are required", parent=self.root)
             return
             
-        if not self.var_name.get() or not self.var_price.get() or not self.var_qty.get():
+        if not self.var_name.get() or not self.txt_price.get() or not self.var_qty.get():
             messagebox.showerror("Error", "All fields are required", parent=self.root)
             return
 
         try:
-            price = float(self.var_price.get())
+            price = self.get_price_value()
+            if price is None:
+                messagebox.showerror("Error", "Invalid price format", parent=self.root)
+                return
+                
             qty = int(self.var_qty.get())
         except ValueError:
             messagebox.showerror("Error", "Price must be a number and Quantity must be an integer", parent=self.root)
@@ -335,12 +442,16 @@ class ProductClass:
             messagebox.showerror("Error", "Category and Supplier are required", parent=self.root)
             return
             
-        if not self.var_name.get() or not self.var_price.get() or not self.var_qty.get():
+        if not self.var_name.get() or not self.txt_price.get() or not self.var_qty.get():
             messagebox.showerror("Error", "All fields are required", parent=self.root)
             return
 
         try:
-            price = float(self.var_price.get())
+            price = self.get_price_value()
+            if price is None:
+                messagebox.showerror("Error", "Invalid price format", parent=self.root)
+                return
+                
             qty = int(self.var_qty.get())
         except ValueError:
             messagebox.showerror("Error", "Price must be a number and Quantity must be an integer", parent=self.root)
@@ -430,7 +541,7 @@ class ProductClass:
 
     def clear(self):
         self.var_name.set("")
-        self.var_price.set("")
+        self.txt_price.delete(0, END)
         self.var_qty.set("")
         self.var_cat.set("Select")
         self.var_sup.set("Select")
@@ -439,6 +550,7 @@ class ProductClass:
         self.var_searchby.set("Select")
         self.Product_Table.selection_remove(self.Product_Table.selection())
         self.generate_pid()
+        self.price_without_format = ""
 
     def get_data(self, ev):
         f = self.Product_Table.focus()
@@ -452,7 +564,18 @@ class ProductClass:
             self.var_cat.set(row[1])
             self.var_sup.set(row[2])
             self.var_name.set(row[3])
-            self.var_price.set(row[4])
+            
+            # Format price with commas for display
+            try:
+                price_value = float(row[4])
+                # Format with commas
+                formatted_price = f"{price_value:,.2f}"
+                self.txt_price.delete(0, END)
+                self.txt_price.insert(0, formatted_price.replace('.00', ''))
+            except:
+                self.txt_price.delete(0, END)
+                self.txt_price.insert(0, row[4])
+                
             self.var_qty.set(row[5])
             self.var_status.set(row[6])
 
@@ -466,7 +589,14 @@ class ProductClass:
             for row in rows:
                 # Format PID with leading zeros for display
                 formatted_pid = f"{row[0]:03d}"
-                formatted_row = (formatted_pid, row[1], row[2], row[3], row[4], row[5], row[6])
+                
+                # Format price with commas for display
+                try:
+                    formatted_price = f"Rs.{row[4]:,.2f}"
+                except:
+                    formatted_price = f"Rs.{row[4]}"
+                
+                formatted_row = (formatted_pid, row[1], row[2], row[3], formatted_price, row[5], row[6])
                 self.Product_Table.insert('', END, values=formatted_row)
         except Exception as ex:
             messagebox.showerror("Error", f"Error loading products: {str(ex)}", parent=self.root)
@@ -501,7 +631,14 @@ class ProductClass:
             if rows:
                 for row in rows:
                     formatted_pid = f"{row[0]:03d}"
-                    formatted_row = (formatted_pid, row[1], row[2], row[3], row[4], row[5], row[6])
+                    
+                    # Format price with commas for display
+                    try:
+                        formatted_price = f"Rs.{row[4]:,.2f}"
+                    except:
+                        formatted_price = f"Rs.{row[4]}"
+                    
+                    formatted_row = (formatted_pid, row[1], row[2], row[3], formatted_price, row[5], row[6])
                     self.Product_Table.insert('', END, values=formatted_row)
             else:
                 messagebox.showinfo("No Results", "No products found", parent=self.root)

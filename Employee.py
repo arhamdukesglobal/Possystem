@@ -32,8 +32,6 @@ class EmployeeClass:
         self.var_DOB = StringVar()
         self.var_DOJ = StringVar()
         self.var_email = StringVar()
-        self.var_Password = StringVar()
-        self.var_utype = StringVar()
         self.var_salary = StringVar()
         self.var_cnic = StringVar()  # New variable for CNIC
 
@@ -42,7 +40,7 @@ class EmployeeClass:
         SearchFrame.place(x=250,y=20,width=600,height=70)
 
         #===options====
-        cmb_search=ttk.Combobox(SearchFrame,textvariable=self.var_searchby,values=("Select","EmpID","Email","Name","Contact","CNIC"),state="readonly",justify=CENTER,font=("Times new Roman",15))
+        cmb_search=ttk.Combobox(SearchFrame,textvariable=self.var_searchby,values=("Select","EmpID","Name","Contact","CNIC"),state="readonly",justify=CENTER,font=("Times new Roman",15))
         cmb_search.place(x=10,y=10,width=180)
         cmb_search.current(0)
 
@@ -74,7 +72,7 @@ class EmployeeClass:
         #====row2=====
         lbl_name=Label(self.root,text="Name",font=("goudy old style",15),bg="white").place(x=50,y=190)
         lbl_dob=Label(self.root,text="D.O.B",font=("goudy old style",15),bg="white").place(x=350,y=190)
-        lbl_contact=Label(self.root,text="Contact",font=("goudy old style",15),bg="white").place(x=750,y=190)
+        lbl_contact=Label(self.root,text="Contact No.",font=("goudy old style",15),bg="white").place(x=750,y=190)
 
         # Name entry
         self.txt_name=Entry(self.root,textvariable=self.var_name,font=("goudy old style",15),bg="lightyellow")
@@ -109,7 +107,7 @@ class EmployeeClass:
         #====row3=====
         lbl_email=Label(self.root,text="Email",font=("goudy old style",15),bg="white").place(x=50,y=230)
         lbl_doj=Label(self.root,text="Joining Date",font=("goudy old style",15),bg="white").place(x=350,y=230)
-        lbl_utype=Label(self.root,text="User Type",font=("goudy old style",15),bg="white").place(x=750,y=230)
+        lbl_salary=Label(self.root,text="Salary",font=("goudy old style",15),bg="white").place(x=750,y=230)  # Moved salary here
 
         # Email entry
         self.txt_email=Entry(self.root,textvariable=self.var_email,font=("goudy old style",15),bg="lightyellow")
@@ -123,23 +121,9 @@ class EmployeeClass:
         self.doj_calendar.pack(fill=BOTH, expand=True)
         self.doj_calendar.bind("<<DateEntrySelected>>", self.on_doj_select)
         
-        cmb_utype=ttk.Combobox(self.root,textvariable=self.var_utype,values=("Admin","Employee"),state="readonly",justify=CENTER,font=("Times new Roman",15))
-        cmb_utype.place(x=850,y=230,width=180)
-        cmb_utype.current(0)
-        cmb_utype.bind('<<ComboboxSelected>>', self.on_utype_change)
-
-        #====row4=====
-        lbl_address=Label(self.root,text="Address",font=("goudy old style",15),bg="white").place(x=50,y=270)
-        lbl_salary=Label(self.root,text="Salary",font=("goudy old style",15),bg="white").place(x=350,y=270)
-        lbl_password=Label(self.root,text="Password",font=("goudy old style",15),bg="white").place(x=750,y=270)
-
-        # Address entry
-        self.txt_address=Text(self.root,font=("goudy old style",15),bg="lightyellow")
-        self.txt_address.place(x=150,y=270,width=180,height=60)
-        
         # Salary entry with Rs prefix and comma formatting
         salary_frame = Frame(self.root, bg="lightyellow")
-        salary_frame.place(x=500,y=270,width=180,height=30)
+        salary_frame.place(x=850,y=230,width=180,height=30)
         
         # Label with Rs prefix
         salary_label = Label(salary_frame, text="Rs ", font=("goudy old style",15), bg="lightyellow", fg="gray")
@@ -151,10 +135,13 @@ class EmployeeClass:
         self.salary_entry.pack(side=LEFT, fill=BOTH, expand=True)
         self.salary_entry.bind('<KeyRelease>', self.format_salary)
         self.salary_entry.bind('<FocusOut>', self.format_salary_final)
-        
-        # Password entry - initially enabled for Admin
-        self.txt_pass=Entry(self.root,textvariable=self.var_Password,font=("goudy old style",15),bg="lightyellow", show="*")
-        self.txt_pass.place(x=850,y=270,width=180)
+
+        #====row4=====
+        lbl_address=Label(self.root,text="Address",font=("goudy old style",15),bg="white").place(x=50,y=270)
+
+        # Address entry - expanded to take more space
+        self.txt_address=Text(self.root,font=("goudy old style",15),bg="lightyellow")
+        self.txt_address.place(x=150,y=270,width=700,height=60)  # Expanded width
 
         #====buttons=====
         btn_add = Button(self.root,text="Save",command=self.add, font=("Aptos",15),bg="#2196f3",fg="White",cursor="hand2").place(x=500,y=340,width=110,height=28)
@@ -169,7 +156,8 @@ class EmployeeClass:
         scrolly=Scrollbar(emp_frame,orient=VERTICAL)
         scrollx=Scrollbar(emp_frame,orient=HORIZONTAL)
 
-        self.EmployeeTable=ttk.Treeview(emp_frame,columns=("EmpID","Name","Email","Gender","CNIC","Contact","DOB","DOJ","Password","UserType","Address","Salary"),yscrollcommand=scrolly.set,xscrollcommand=scrollx.set)
+        # Removed Password and UserType columns
+        self.EmployeeTable=ttk.Treeview(emp_frame,columns=("EmpID","Name","Email","Gender","CNIC","Contact","DOB","DOJ","Address","Salary"),yscrollcommand=scrolly.set,xscrollcommand=scrollx.set)
         scrollx.pack(side=BOTTOM,fill=X)
         scrolly.pack(side=RIGHT,fill=Y)
         scrollx.config(command=self.EmployeeTable.xview)
@@ -183,8 +171,6 @@ class EmployeeClass:
         self.EmployeeTable.heading("Contact",text="Contact")
         self.EmployeeTable.heading("DOB",text="DOB")
         self.EmployeeTable.heading("DOJ",text="Joining Date")
-        self.EmployeeTable.heading("Password",text="Password")
-        self.EmployeeTable.heading("UserType",text="User Type")
         self.EmployeeTable.heading("Address",text="Address")
         self.EmployeeTable.heading("Salary",text="Salary")
 
@@ -197,10 +183,8 @@ class EmployeeClass:
         self.EmployeeTable.column("Contact",width=100)
         self.EmployeeTable.column("DOB",width=80)
         self.EmployeeTable.column("DOJ",width=100)
-        self.EmployeeTable.column("Password",width=80)
-        self.EmployeeTable.column("UserType",width=80)
-        self.EmployeeTable.column("Address",width=100)
-        self.EmployeeTable.column("Salary",width=80)
+        self.EmployeeTable.column("Address",width=150)
+        self.EmployeeTable.column("Salary",width=100)
 
         self.EmployeeTable.pack(fill=BOTH,expand=1)
         self.EmployeeTable.bind("<ButtonRelease-1>",self.get_data)
@@ -210,23 +194,73 @@ class EmployeeClass:
         self.show()
 
     def initialize_database(self):
-        """Ensure the Employee table exists in the database"""
+        """Ensure the Employee table exists in the database with new structure"""
         try:
             con = sqlite3.connect(database=r'Possystem.db')
             cur = con.cursor()
-            cur.execute('''CREATE TABLE IF NOT EXISTS Employee (
-                        EmpID TEXT PRIMARY KEY,
-                        Name TEXT NOT NULL,
-                        Email TEXT,
-                        Gender TEXT,
-                        CNIC TEXT UNIQUE,
-                        Contact TEXT,
-                        DOB TEXT,
-                        DOJ TEXT,
-                        Password TEXT,
-                        UserType TEXT,
-                        Address TEXT,
-                        Salary TEXT)''')
+            
+            # Check if old table exists
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Employee'")
+            table_exists = cur.fetchone()
+            
+            if table_exists:
+                # Check if old table has Password and UserType columns
+                cur.execute("PRAGMA table_info(Employee)")
+                columns = [col[1] for col in cur.fetchall()]
+                
+                if 'Password' in columns and 'UserType' in columns:
+                    # Create new table without Password and UserType
+                    cur.execute('''CREATE TABLE IF NOT EXISTS Employee_new (
+                                EmpID TEXT PRIMARY KEY,
+                                Name TEXT NOT NULL,
+                                Email TEXT,
+                                Gender TEXT,
+                                CNIC TEXT UNIQUE,
+                                Contact TEXT,
+                                DOB TEXT,
+                                DOJ TEXT,
+                                Address TEXT,
+                                Salary TEXT)''')
+                    
+                    # Copy data from old table to new table (excluding Password and UserType)
+                    cur.execute('''INSERT INTO Employee_new (EmpID, Name, Email, Gender, CNIC, Contact, DOB, DOJ, Address, Salary)
+                                SELECT EmpID, Name, Email, Gender, CNIC, Contact, DOB, DOJ, Address, Salary 
+                                FROM Employee''')
+                    
+                    # Drop old table
+                    cur.execute("DROP TABLE Employee")
+                    
+                    # Rename new table to Employee
+                    cur.execute("ALTER TABLE Employee_new RENAME TO Employee")
+                    
+                    messagebox.showinfo("Database Update", "Employee table structure updated successfully. Password and UserType fields have been removed.")
+                else:
+                    # Table already has new structure, just ensure it exists
+                    cur.execute('''CREATE TABLE IF NOT EXISTS Employee (
+                                EmpID TEXT PRIMARY KEY,
+                                Name TEXT NOT NULL,
+                                Email TEXT,
+                                Gender TEXT,
+                                CNIC TEXT UNIQUE,
+                                Contact TEXT,
+                                DOB TEXT,
+                                DOJ TEXT,
+                                Address TEXT,
+                                Salary TEXT)''')
+            else:
+                # Create table with new structure
+                cur.execute('''CREATE TABLE IF NOT EXISTS Employee (
+                            EmpID TEXT PRIMARY KEY,
+                            Name TEXT NOT NULL,
+                            Email TEXT,
+                            Gender TEXT,
+                            CNIC TEXT UNIQUE,
+                            Contact TEXT,
+                            DOB TEXT,
+                            DOJ TEXT,
+                            Address TEXT,
+                            Salary TEXT)''')
+            
             con.commit()
             con.close()
         except Exception as e:
@@ -275,15 +309,6 @@ class EmployeeClass:
     def on_contact_focus(self, event):
         """Set cursor to the beginning of the entry when focused"""
         self.contact_entry.icursor(0)
-
-    def on_utype_change(self, event):
-        """Handle user type change - enable/disable password field"""
-        if self.var_utype.get() == "Admin":
-            self.txt_pass.config(state='normal', bg='lightyellow')
-            self.var_Password.set("")
-        else:
-            self.txt_pass.config(state='disabled', bg='lightgray')
-            self.var_Password.set("N/A")  # Set default value for Employee
 
     def format_salary(self, event=None):
         """Format salary with commas as user types"""
@@ -371,8 +396,6 @@ class EmployeeClass:
                         Contact TEXT,
                         DOB TEXT,
                         DOJ TEXT,
-                        Password TEXT,
-                        UserType TEXT,
                         Address TEXT,
                         Salary TEXT)''')
             
@@ -486,17 +509,6 @@ class EmployeeClass:
             if not self.validate_dates():
                 errors.append("Date of Birth must be earlier than Joining Date")
         
-        # Check User Type
-        if not self.var_utype.get():
-            errors.append("User Type is required")
-        
-        # Check Password - only for Admin
-        if self.var_utype.get() == "Admin":
-            if not self.var_Password.get() or self.var_Password.get() == "N/A":
-                errors.append("Password is required for Admin")
-            elif len(self.var_Password.get()) < 4:
-                errors.append("Password must be at least 4 characters for Admin")
-        
         # Check Address
         if not self.txt_address.get('1.0', END).strip():
             errors.append("Address is required")
@@ -553,12 +565,8 @@ class EmployeeClass:
             # Clean salary value
             salary_clean = self.var_salary.get().replace(',', '').replace('Rs', '').strip()
             
-            # Set password based on user type
-            password_value = self.var_Password.get()
-            if self.var_utype.get() == "Employee":
-                password_value = "N/A"
-            
-            cur.execute("Insert into Employee(EmpID,Name,Email,Gender,CNIC,Contact,DOB,DOJ,Password,UserType,Address,Salary) values(?,?,?,?,?,?,?,?,?,?,?,?)",(
+            # Insert employee data
+            cur.execute("Insert into Employee(EmpID,Name,Email,Gender,CNIC,Contact,DOB,DOJ,Address,Salary) values(?,?,?,?,?,?,?,?,?,?)",(
                                     self.var_EmpID.get(),
                                     self.var_name.get().strip(),
                                     self.var_email.get().strip(),
@@ -567,8 +575,6 @@ class EmployeeClass:
                                     contact_full,
                                     self.var_DOB.get(),
                                     self.var_DOJ.get(),
-                                    password_value,
-                                    self.var_utype.get(),
                                     self.txt_address.get('1.0',END).strip(),
                                     salary_clean,
             ))
@@ -607,13 +613,13 @@ class EmployeeClass:
                         formatted_row[4] = formatted_cnic
                 
                 # Format salary with Rs prefix and commas
-                if row[11]:  # Salary column
+                if row[9]:  # Salary column (now at index 9)
                     try:
-                        salary_value = float(row[11])
+                        salary_value = float(row[9])
                         formatted_salary = "Rs " + '{:,.2f}'.format(salary_value)
-                        formatted_row[11] = formatted_salary
+                        formatted_row[9] = formatted_salary
                     except:
-                        formatted_row[11] = row[11]
+                        formatted_row[9] = row[9]
                 
                 self.EmployeeTable.insert('',END,values=formatted_row)
         except Exception as ex:
@@ -638,7 +644,7 @@ class EmployeeClass:
             cnic = str(row[4])
             self.var_cnic.set(cnic)
             
-            # Set contact (remove +92 prefix for display) - FEATURE 1
+            # Set contact (remove +92 prefix for display)
             contact = str(row[5])
             if contact.startswith('+92'):
                 contact = contact[3:]  # Remove +92 prefix
@@ -661,21 +667,12 @@ class EmployeeClass:
             except:
                 pass
             
-            # Set Password - FEATURE 3
-            self.var_Password.set(row[8])
-            
-            # Set User Type and handle password field
-            self.var_utype.set(row[9])
-            if row[9] == "Admin":
-                self.txt_pass.config(state='normal', bg='lightyellow')
-            else:
-                self.txt_pass.config(state='disabled', bg='lightgray')
-            
+            # Set Address
             self.txt_address.delete('1.0', END)
-            self.txt_address.insert(END, row[10])
+            self.txt_address.insert(END, row[8])
             
             # Set salary (remove Rs prefix for editing)
-            salary = str(row[11])
+            salary = str(row[9])
             if salary.startswith('Rs'):
                 salary = salary[2:].strip()  # Remove Rs prefix
             self.var_salary.set(salary)
@@ -718,12 +715,7 @@ class EmployeeClass:
             # Clean salary value
             salary_clean = self.var_salary.get().replace(',', '').replace('Rs', '').strip()
             
-            # Set password based on user type
-            password_value = self.var_Password.get()
-            if self.var_utype.get() == "Employee":
-                password_value = "N/A"
-            
-            cur.execute("Update employee set Name=?,Email=?,Gender=?,CNIC=?,Contact=?,DOB=?,DOJ=?,Password=?,UserType=?,Address=?,Salary=? where EmpID=?",(
+            cur.execute("Update employee set Name=?,Email=?,Gender=?,CNIC=?,Contact=?,DOB=?,DOJ=?,Address=?,Salary=? where EmpID=?",(
                                     self.var_name.get().strip(),
                                     self.var_email.get().strip(),
                                     self.var_gender.get(),
@@ -731,8 +723,6 @@ class EmployeeClass:
                                     contact_full,
                                     self.var_DOB.get(),
                                     self.var_DOJ.get(),
-                                    password_value,
-                                    self.var_utype.get(),
                                     self.txt_address.get('1.0',END).strip(),
                                     salary_clean,
                                     self.var_EmpID.get(),
@@ -781,8 +771,6 @@ class EmployeeClass:
         self.var_contact.set("")  # Clear contact (only 10 digits part)
         self.var_DOB.set("")
         self.var_DOJ.set("")
-        self.var_Password.set("")
-        self.var_utype.set("Admin")
         self.txt_address.delete('1.0',END)
         self.var_salary.set("")
         self.var_searchtxt.set("")
@@ -792,10 +780,6 @@ class EmployeeClass:
         today = datetime.now()
         self.dob_calendar.set_date(today)
         self.doj_calendar.set_date(today)
-        
-        # Reset password field based on default user type (Admin)
-        self.txt_pass.config(state='normal', bg='lightyellow')
-        self.var_Password.set("")
         
         # Generate new EmpID
         self.generate_emp_id()
@@ -844,10 +828,10 @@ class EmployeeClass:
                     if row[4] and len(row[4]) == 13:
                         formatted_row[4] = f"{row[4][:5]}-{row[4][5:12]}-{row[4][12:]}"
                     # Format salary with Rs prefix and commas
-                    if row[11]:
+                    if row[9]:
                         try:
-                            salary_value = float(row[11])
-                            formatted_row[11] = "Rs " + '{:,.2f}'.format(salary_value)
+                            salary_value = float(row[9])
+                            formatted_row[9] = "Rs " + '{:,.2f}'.format(salary_value)
                         except:
                             pass
                     self.EmployeeTable.insert("", END, values=formatted_row)

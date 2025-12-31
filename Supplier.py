@@ -68,7 +68,7 @@ class SupplierClass:
         txt_name.place(x=150, y=190, width=180)
 
         #====row3=====
-        lbl_contact = Label(self.root, text="Contact", font=("goudy old style", 15), 
+        lbl_contact = Label(self.root, text="Contact No.", font=("goudy old style", 15), 
                            bg="white")
         lbl_contact.place(x=50, y=230)
         
@@ -273,7 +273,7 @@ class SupplierClass:
             # Optionally, show a brief warning
             self.txt_contact.config(bg="#ffebee")  # Light red background
             self.root.after(500, lambda: self.txt_contact.config(bg="lightyellow"))
-    
+
     def validate_contact_format(self, contact):
         """Validate that contact number is exactly +92 followed by 10 digits"""
         # Check if it starts with +92
@@ -290,14 +290,6 @@ class SupplierClass:
         # Check if the part after +92 contains only numbers
         if not after_plus92.isdigit():
             return False, "Contact number must contain only numbers after +92"
-        
-        # Optional: You can add more specific validation for Pakistan numbers
-        # For example, check if the first digit after +92 is 3
-        if not after_plus92.startswith('3'):
-            response = messagebox.askyesno("Warning", 
-                "Pakistani mobile numbers usually start with +923. Do you want to continue?")
-            if not response:
-                return False, "Contact number validation cancelled"
         
         return True, contact
 

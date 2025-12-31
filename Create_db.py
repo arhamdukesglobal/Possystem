@@ -1,3 +1,4 @@
+#Database
 import sqlite3
 
 def create_database():
@@ -13,7 +14,7 @@ def create_database():
         "Description TEXT)"
     )
 
-    # Employee table
+    # Employee table WITHOUT Password and UserType
     cur.execute('''CREATE TABLE IF NOT EXISTS Employee (
                 EmpID TEXT PRIMARY KEY,
                 Name TEXT NOT NULL,
@@ -23,8 +24,6 @@ def create_database():
                 Contact TEXT,
                 DOB TEXT,
                 DOJ TEXT,
-                Password TEXT,
-                UserType TEXT,
                 Address TEXT,
                 Salary TEXT)''')
     
