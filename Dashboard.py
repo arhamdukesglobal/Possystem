@@ -5,7 +5,8 @@ from PIL import Image, ImageTk
 from Employee import EmployeeClass
 from Supplier import SupplierClass
 from Category import CategoryClass
-from Product import ProductClass
+# FIXED: Import the correct class name from Product.py
+from Product import IntegratedInventorySystem as ProductClass
 from InvoiceNew import Invoice_Class  # ADDED THIS LINE
 from Sales import SalesClass
 import sqlite3
@@ -135,12 +136,12 @@ class IMS:
                font=("Aptos Display", 16, "bold"),
                bg="white", bd=6, cursor="hand2", state=btn_state).pack(side=TOP, fill=X)
 
-        Button(menu_frame, text="Category", command=self.Category, image=self.icon_side,
-               compound=LEFT, padx=5, anchor="w",
-               font=("Aptos Display", 16, "bold"),
-               bg="white", bd=6, cursor="hand2", state=btn_state).pack(side=TOP, fill=X)
+#        Button(menu_frame, text="Stock / Inventory", command=self.Category, image=self.icon_side,
+ #              compound=LEFT, padx=5, anchor="w",
+#               font=("Aptos Display", 16, "bold"),
+#               bg="white", bd=6, cursor="hand2", state=btn_state).pack(side=TOP, fill=X)#
 
-        Button(menu_frame, text="Product",command=self.Product, image=self.icon_side,
+        Button(menu_frame, text="Stock/Inventory",command=self.Product, image=self.icon_side,
                compound=LEFT, padx=5, anchor="w",
                font=("Aptos Display", 16, "bold"),
                bg="white", bd=6, cursor="hand2", state=btn_state).pack(side=TOP, fill=X)
@@ -483,12 +484,12 @@ class IMS:
         else:
             messagebox.showinfo("Guest Mode", "This feature is disabled in guest mode. Please sign up for full access.", parent=self.root)
 
-    def Category(self):
-        if not self.is_guest:
-            self.new_win = Toplevel(self.root)
-            self.new_obj = CategoryClass(self.new_win)
-        else:
-            messagebox.showinfo("Guest Mode", "This feature is disabled in guest mode. Please sign up for full access.", parent=self.root)
+#    def Category(self):
+#        if not self.is_guest:
+#            self.new_win = Toplevel(self.root)
+#            self.new_obj = CategoryClass(self.new_win)
+#        else:
+#            messagebox.showinfo("Guest Mode", "This feature is disabled in guest mode. Please sign up for full access.", parent=self.root)
 
     def Product(self):
         if not self.is_guest:
