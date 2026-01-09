@@ -137,11 +137,11 @@ class IMS:
                bg="white", bd=6, cursor="hand2", state=btn_state).pack(side=TOP, fill=X)
 
 #        Button(menu_frame, text="Stock / Inventory", command=self.Category, image=self.icon_side,
- #              compound=LEFT, padx=5, anchor="w",
+#               compound=LEFT, padx=5, anchor="w",
 #               font=("Aptos Display", 16, "bold"),
-#               bg="white", bd=6, cursor="hand2", state=btn_state).pack(side=TOP, fill=X)#
+#               bg="white", bd=6, cursor="hand2", state=btn_state).pack(side=TOP, fill=X)
 
-        Button(menu_frame, text="Stock/Inventory",command=self.Product, image=self.icon_side,
+        Button(menu_frame, text="Stock / Inventory",command=self.Product, image=self.icon_side,
                compound=LEFT, padx=5, anchor="w",
                font=("Aptos Display", 16, "bold"),
                bg="white", bd=6, cursor="hand2", state=btn_state).pack(side=TOP, fill=X)
@@ -175,10 +175,11 @@ class IMS:
                                       font=("Contemporary Sans-Serif", 18, "bold"))
             self.lbl_supplier.place(x=650, y=180, height=180, width=300)
             
-            self.lbl_category = Label(self.root, text="Guest Account\nLimited Access",
-                                      bd=6.5, relief=RIDGE, bg="#404040", fg="white",
-                                      font=("Contemporary Sans-Serif", 18, "bold"))
-            self.lbl_category.place(x=1000, y=180, height=180, width=300)
+            # REPLACED: Total Categories with Stock/Inventory
+            self.lbl_stock = Label(self.root, text="Stock/Inventory\nLow Stock: 0\nTotal Items: 0",
+                                  bd=6.5, relief=RIDGE, bg="#404040", fg="white",
+                                  font=("Contemporary Sans-Serif", 16, "bold"))
+            self.lbl_stock.place(x=1000, y=180, height=180, width=300)
             
             self.lbl_product = Label(self.root, text="Create Account\nFor Full Features",
                                      bd=6.5, relief=RIDGE, bg="#404040", fg="white",
@@ -207,10 +208,11 @@ class IMS:
                                       font=("Contemporary Sans-Serif", 18, "bold"))
             self.lbl_supplier.place(x=650, y=180, height=180, width=300)
 
-            self.lbl_category = Label(self.root, text="Total Categories\n[ 0 ]",
-                                      bd=6.5, relief=RIDGE, bg="#404040", fg="white",
-                                      font=("Contemporary Sans-Serif", 18, "bold"))
-            self.lbl_category.place(x=1000, y=180, height=180, width=300)
+            # REPLACED: Total Categories with Stock/Inventory
+            self.lbl_stock = Label(self.root, text="Stock/Inventory\nLow Stock: 0\nTotal Items: 0",
+                                  bd=6.5, relief=RIDGE, bg="#404040", fg="white",
+                                  font=("Contemporary Sans-Serif", 16, "bold"))
+            self.lbl_stock.place(x=1000, y=180, height=180, width=300)
 
             self.lbl_product = Label(self.root, text="Total Products\n[ 0 ]",
                                      bd=6.5, relief=RIDGE, bg="#404040", fg="white",
@@ -484,12 +486,12 @@ class IMS:
         else:
             messagebox.showinfo("Guest Mode", "This feature is disabled in guest mode. Please sign up for full access.", parent=self.root)
 
-#    def Category(self):
-#        if not self.is_guest:
-#            self.new_win = Toplevel(self.root)
-#            self.new_obj = CategoryClass(self.new_win)
-#        else:
-#            messagebox.showinfo("Guest Mode", "This feature is disabled in guest mode. Please sign up for full access.", parent=self.root)
+    def Category(self):
+        if not self.is_guest:
+            self.new_win = Toplevel(self.root)
+            self.new_obj = CategoryClass(self.new_win)
+        else:
+            messagebox.showinfo("Guest Mode", "This feature is disabled in guest mode. Please sign up for full access.", parent=self.root)
 
     def Product(self):
         if not self.is_guest:
@@ -529,9 +531,17 @@ class IMS:
             supplier=cur.fetchall()
             self.lbl_supplier.config(text=f"Total Suppliers\n[ {str(len(supplier))} ]")
 
-            cur.execute("Select * from Category")
-            category=cur.fetchall()
-            self.lbl_category.config(text=f"Total Categories\n[ {str(len(category))} ]")
+            # REPLACED: Category count with Stock/Inventory data
+            # Get total stock items
+            cur.execute("SELECT SUM(Quantity) FROM product")
+            total_stock = cur.fetchone()[0]
+            total_stock = total_stock if total_stock is not None else 0
+            
+            # Get low stock items (less than 10 items)
+            cur.execute("SELECT COUNT(*) FROM product WHERE Quantity < 10")
+            low_stock = cur.fetchone()[0]
+            
+            self.lbl_stock.config(text=f"Stock/Inventory\nLow Stock: {low_stock}\nTotal Items: {total_stock}")
 
             cur.execute("Select * from Employee")
             employee=cur.fetchall()
